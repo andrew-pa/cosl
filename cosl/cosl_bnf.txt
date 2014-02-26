@@ -1,0 +1,69 @@
+
+; [stuff] or [stuff*] zero or one | [$x - $y] range of 
+; ? zero or more 
+; + one or more
+; (...) grouping
+
+<shader_type> := '$vertex_shader' | '$pixel_shader'
+
+<typename> := 'bool' | 'int' | 'uint' | 'float' | 'double'
+			| 'bvec'[2-4] | 'ivec'[2-4] | 'uvec'[2-4] | 'vec'[2-4] | 'dvec'[2-4]
+			| 'mat'[2-4]'x'[[2-4]*] | 'dmat'[2-4]['x'[2-4]*]
+			| #ID ;struct name
+<semantic> := 'rs_position' | 'target'#NUM(int)	| 
+
+<decl_block> := (<typename> #ID [':' <semantic>] ;)+
+
+<input_block> := 'input' '{' <decl_block> '}'
+<output_block> := 'output' '{' <decl_block> '}'
+
+<cbuffer_block> := 'cbuffer' '(' #NUM(int) ')' '{' <decl_block> '}' ; number is the register idx
+
+<texture1D_def> := 'texture1D' #ID '(' #NUM(int) ')' ; number is the register idx
+<texture2D_def> := 'texture2D' #ID '(' #NUM(int) ')' ; number is the register idx
+<texture3D_def> := 'texture3D' #ID '(' #NUM(int) ')' ; number is the register idx
+<texture_cube_def> := 'texture_cube' #ID '(' #NUM(int) ')' ; number is the register idx
+
+<texture_def> := <texture1D_def> | <texture2D_def> | <texture3D_def> | <texture_cube_def>
+
+<id> := #ID ('.' #ID)+
+
+<bool_expr> := 'true' | 'false'
+			 | <expr> '<' <expr>
+			 | <expr> '>' <expr>
+			 | <expr> '<=' <expr>
+			 | <expr> '>=' <expr>
+			 | <expr> '==' <expr>
+			 | <expr> '!=' <expr>
+
+<term> := <expr> '*' <expr> | <expr> '/' <expr>
+
+<expr> := <id> | '(' <expr> ')' 
+		| <expr> '+' <expr>
+		| <expr> '-' <expr>
+		| <term>
+		| <bool_expr> 
+		| #ID '(' (<expr> ',')+ ')' ;function invocation
+
+<assign_stmt> := <id> '=' <expr> 
+			   | <id> '+=' <expr> ;like ++, -=, *=, /=, -- and stuff
+			   | <id> '-=' <expr>
+			   | <id> '++' <expr>
+			   | <id> '--' <expr>
+			   | <id> '*=' <expr>
+			   | <id> '/=' <expr>
+
+<decl_stmt> := <typename> #ID | <typname> #ID '=' <expr>
+<if_stmt> := 'if' '(' <bool_expr> ')' <stmt> ['else' <stmt>]
+<while_stmt> := 'while' '(' <bool_expr> ')' <stmt>
+<for_stmt> := 'for' '(' <stmt> ';' <bool_expr> ';' <stmt> ')' <stmt>
+<func_invoke_stmt> := #ID '(' (<expr> ',')+ ')'
+<return_stmt> := 'return' | 'return' <expr>
+
+<stmt> := <assign_stmt> | <decl_stmt> | <if_stmt> | <while_stmt> | <for_stmt> | <func_invoke_stmt>
+		| <return_stmt> | <stmt> ';' <stmt> | '{' <stmt> '}'
+
+
+<function> := <typename $return_type> #ID '(' (<typename> #ID)+ ')' '{' <stmt> '}'
+
+<file> := <shader_type> <input_block> <output_block> (<cbuffer_block>+ <texture_def>+ <function>+)<{any order}

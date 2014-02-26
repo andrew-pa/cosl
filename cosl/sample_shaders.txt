@@ -1,0 +1,57 @@
+
+
+$vertex_shader
+input
+{
+	vec3 pos;
+	vec3 norm;
+	vec3 tex;
+}
+
+output
+{
+	vec3 pos : rs_position;
+	vec3 posW;
+	vec3 normW;
+	vec3 texc;
+}
+
+cbuffer(0)
+{
+	mat4 wvp;
+	mat4 inw;
+	vec4 t;
+}
+
+void main()
+{
+	vec4 p = vec4(input.pos, 1.0);
+	output.pos = p*wvp;
+	output.posW = input.pos;
+	output.normW = input.norm * inw;
+	output.texc = input.tex;
+}
+
+$pixel_shader
+input
+{
+	vec3 posW;
+	vec3 normW;
+	vec2 texc;
+}
+
+output
+{
+	vec4 col : target0;
+}
+
+texture2D tex(0);
+
+void main()
+{
+	output.col = sample2D(tex, input.texc);
+} 
+
+for(int i = 0; i < 5; ++i)
+{
+}
