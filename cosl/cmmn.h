@@ -23,3 +23,31 @@ inline bool is_a(T* v)
 {
 	return (dynamic_cast<A*>(v) != nullptr);
 }
+
+template <typename T, typename F, typename _Compare = equal_to<T>>
+inline const F& matchv(const T& v, vector<pair<T, function<const F&()>>> pmes, const F& def = F())
+{
+	_Compare c;
+	for (auto pm : pmes)
+	{
+		if(c(v, pm.first))
+		{
+			return pm.second();
+		}
+	}
+	return def;
+}
+template <typename T, typename F, typename _Compare = equal_to<T>>
+inline const F& matchv(const T& v, vector<pair<T, function<const F&()>>> pmes, 
+	function<const F&()> def = [&]{ return F(); })
+{
+	_Compare c;
+	for (auto pm : pmes)
+	{
+		if (c(v, pm.first))
+		{
+			return pm.second();
+		}
+	}
+	return def();
+}

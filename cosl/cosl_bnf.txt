@@ -28,28 +28,35 @@
 
 <id> := #ID ('.' #ID)+
 
+<primary> := <id> | #NUM | '(' <expr> ')' 
+		   | #ID '(' (<expr> ',')+ ')' ;function invocation
+
+
+<bool_primary> := <id> | #NUM | '(' <bool_expr> ')' 
+		   | #ID '(' (<expr> ',')+ ')' ;function invocation
 <bool_expr> := 'true' | 'false'
-			 | <expr> '<' <expr>
-			 | <expr> '>' <expr>
-			 | <expr> '<=' <expr>
-			 | <expr> '>=' <expr>
-			 | <expr> '==' <expr>
-			 | <expr> '!=' <expr>
+			 | '!' <bool_expr>
+			 | <bool_expr> '<' <bool_expr>
+			 | <bool_expr> '>' <bool_expr>
+			 | <bool_expr> '<=' <bool_expr>
+			 | <bool_expr> '>=' <bool_expr>
+			 | <bool_expr> '==' <bool_expr>
+			 | <bool_expr> '!=' <bool_expr>
 
-<term> := <expr> '*' <expr> | <expr> '/' <expr>
+<term> := <primary>
+		| <term> '*' <primary> 
+		| <term> '/' <primary>
 
-<expr> := <id> | '(' <expr> ')' 
-		| <expr> '+' <expr>
-		| <expr> '-' <expr>
-		| <term>
+<expr> := <term>
 		| <bool_expr> 
-		| #ID '(' (<expr> ',')+ ')' ;function invocation
+		| <expr> '+' <term>
+		| <expr> '-' <term>
 
 <assign_stmt> := <id> '=' <expr> 
 			   | <id> '+=' <expr> ;like ++, -=, *=, /=, -- and stuff
 			   | <id> '-=' <expr>
-			   | <id> '++' <expr>
-			   | <id> '--' <expr>
+			   | <id> '++'
+			   | <id> '--'
 			   | <id> '*=' <expr>
 			   | <id> '/=' <expr>
 

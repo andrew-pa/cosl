@@ -19,6 +19,16 @@ struct s_type
 	uint vecdim;
 	uint matdim;
 	string* udt_name;
+	s_type(base_s_type t)
+		: type(t), vecdim(-1), matdim(-1), udt_name(nullptr) {}
+	s_type(base_s_type t, uint vd)
+		: type(t), vecdim(vd), matdim(-1), udt_name(nullptr) {}
+
+	s_type(base_s_type t, uint vd, uint md)
+		: type(t), vecdim(vd), matdim(md), udt_name(nullptr) {}
+	s_type(const string& udt_nm)
+		: type(base_s_type::user_def_t), udt_name(new string(udt_nm)), vecdim(-1), matdim(-1) {}
+
 };
 
 typedef string semantic;
@@ -60,58 +70,142 @@ struct id
 {
 	string base_name;
 	vector<string> members;
+	id(const string& s)
+		: base_name(), members()
+	{
+		vector<string> parts;
+		string nx = "";
+		for (int i = 0; i < s.size(); ++i)
+		{
+			if(s[i] == '.')
+			{
+				parts.push_back(nx);
+				nx = "";
+				continue;
+			}
+			nx += s[i];
+		}
+		if (!nx.empty()) parts.push_back(nx);
+		if(parts.size() == 0)
+		{
+			base_name = s;
+		}
+		else
+		{
+			base_name = parts[0];
+			members = vector<string>(parts.begin() + 1, parts.end());
+		}
+	}
 };
 
 #pragma region expr
+
 struct expr
 {
 	virtual ~expr(){}
 };
 
-struct id_expr : public expr
-{
-	id _id;
-};
-
-struct add_expr : public expr
-{
-	expr* left, *right;
-};
-
 struct term : public expr
 {
+	virtual ~term(){}
 };
+
+struct primary : public term
+{
+	virtual ~primary() {}
+};
+
+struct id_primary : public primary
+{
+	id _id;
+	id_primary(id _d)
+		: _id(_d) {}
+};
+
+struct num_primary : public primary
+{
+	string num;
+	num_primary() {}
+	num_primary(const string& s)
+		: num(s) {}
+};
+
+struct func_invoke_primary : public primary
+{
+	string func_name;
+	vector<expr*> args;
+	func_invoke_primary(const string& n, const vector<expr*>& g)
+		: func_name(n), args(g)
+	{}
+};
+
+
+
+struct primary_term : public term
+{
+	primary* p;
+	primary_term(): p(nullptr){}
+	primary_term(primary*_p) :p(_p){}
+};
+
 struct mul_term : public term
 {
-	expr* left, *right;
+	term* left;
+	primary* right;
+	mul_term() {}
+	mul_term(term* l, primary* p)
+		: left(l), right(p){}
 };
 struct div_term : public term
 {
-	expr* left, *right;
+	term* left;
+	primary* right;
+	div_term() {}
+	div_term(term* l, primary* p)
+		: left(l), right(p){}
+};
+
+
+struct add_expr : public expr
+{
+	expr* left;
+	term* right;
+	add_expr(expr* l, term* r)
+		: left(l), right(r){}
+};
+struct sub_expr : public expr
+{
+	expr* left;
+	term* right;
+	sub_expr(expr* l, term* r)
+		: left(l), right(r){}
 };
 
 struct bool_expr : public expr
 {
 };
 
-enum class bool_op
+struct true_bexpr : public bool_expr {};
+struct false_bexpr : public bool_expr {};
+
+struct not_bexpr : public bool_expr
 {
-	less, greater, less_equal, greater_equal, equal, not_equal, not, and, or
+	bool_expr* xpr;
+	not_bexpr(bool_expr* x)
+		: xpr(x){}
 };
 
-struct binary_bool_expr : public expr
+enum bool_op
 {
-	expr* left, *right;
+	less, greater, less_equal, greater_equal, equal, not_equal, and, or,
+};
+
+struct binary_bexpr : public bool_expr
+{
 	bool_op op;
-};
-
-struct true_expr  : public bool_expr {};
-struct false_expr : public bool_expr {};
-
-struct func_invoke_expr : public expr
-{
-	string func_name;
-	vector<expr*> args;
+	expr* left, *right;
+	binary_bexpr(expr* l, bool_op o, expr* r)
+		: left(l), right(r), op(o){}
 };
 
 #pragma endregion
@@ -147,8 +241,11 @@ struct assign_stmt : public stmt
 
 struct decl_stmt : public stmt
 {
-	id name;
+	s_type* typ;
+	string name; //see BNF grammer, it's not a id, its a #ID
 	expr* init_xpr;
+	decl_stmt(s_type* t, const string& n, expr* ix = nullptr)
+		: typ(t), name(n), init_xpr(ix) {}
 };
 
 struct if_stmt : public stmt
