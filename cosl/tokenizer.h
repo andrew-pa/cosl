@@ -31,6 +31,9 @@ struct token
 		case token_type::special:
 			ss << "spc[" << s << "]";
 			break;
+		case token_type::end:
+			ss << "end";
+			break;
 		default:
 			throw;
 		}
@@ -59,6 +62,8 @@ struct end_token : public token
 	end_token() : token(token_type::end, string("end")) {}
 };
 
+#define get_token() _get_token(__LINE__, __FILE__)
+
 class tokenizer
 {
 	string s;
@@ -72,14 +77,21 @@ public:
 		: s(s_), full(false), idx(0)
 	{ }
 
-	inline token get_token()
+	inline token _get_token(int line, const char* file)
 	{
 		if (full)
 		{
 			full = false;
+			cout << "rbuf[" << line << ":" << file << "] ";
+			buf.print(cout);
+			cout << endl;
 			return buf;
 		}
-		return next_token();
+		auto t = next_token();
+		cout << "rnxt[" << line << ":" << file << "] ";
+		t.print(cout);
+		cout << endl;
+		return t;
 	}
 
 	inline void put_back(const token& t)

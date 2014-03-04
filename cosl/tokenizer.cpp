@@ -4,7 +4,7 @@ bool is_delimiter(char c, bool plain)
 {
 	return (c == ' ' || c == ';' || c == ',' ||
 		c == '(' || c == ')' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || (!plain ? (c == '"' || c == '\'') : false)
-		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|');
+		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}');
 }
 
 bool is_two_char_special_first(char c)

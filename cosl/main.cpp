@@ -32,6 +32,7 @@ primary* parse_primary(tokenizer& tk)
 				{
 					if (t.s == ",")
 					{
+						args.push_back(parse_expr(tk));
 						t = tk.get_token();
 						continue;
 					}
@@ -114,7 +115,12 @@ expr* parse_bool_expr(tokenizer& tk)
 		{
 			t = tk.get_token(); continue;
 		}
-		bool_op o;
+		else if (t.s == "(" || t.s == ")" || t.s == ";")
+		{
+			tk.put_back(t);
+			break;
+		}
+		bool_op o = bool_op::less;
 		if (t.s == "<") o = bool_op::less;
 		else if (t.s == ">") o = bool_op::greater;
 		else if (t.s == "<=") o = bool_op::less_equal;
@@ -123,6 +129,7 @@ expr* parse_bool_expr(tokenizer& tk)
 		else if (t.s == "!=") o = bool_op::not_equal;
 		else if (t.s == "&&") o = bool_op::and;
 		else if (t.s == "||") o = bool_op::or;
+		else throw exception("invalid bool operator");
 		/*bool_op o = matchv<string, bool_op>(t.s,
 		{
 			{ "<",  [&] { return bool_op::less;			 } },
@@ -279,7 +286,7 @@ expr* parse_expr(tokenizer& tk)
 		if (t.s == "true") return new true_bexpr();
 		else if (t.s == "false") return new false_bexpr();
 	}
-	else tk.put_back(t);
+	tk.put_back(t);
 	expr* x = parse_term(tk);
 	t = tk.get_token();
 	while(true)
@@ -332,7 +339,8 @@ s_type* parse_type(tokenizer& tk)
 		string vd, md;
 		for (int i = 0; i < t.s.size(); ++i)
 		{
-			if (!isdigit(t.s[i])) base_type += t.s[i];
+			if (t.s[i] == 'x') seen_x = true;
+			else if (!isdigit(t.s[i])) base_type += t.s[i];
 			else
 			{
 				if (seen_x) md += t.s[i];
@@ -376,94 +384,372 @@ stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt)
 		tk.put_back(t);
 		return new decl_stmt(ppt, idn);
 	}
+	return nullptr;
 }
 
 stmt* parse_assign_stmt(tokenizer& tk)
 {
 	auto t = tk.get_token();
+	if(t.tp == token_type::special)
+	{
+		if (t.s == "++")
+		{
+			t = tk.get_token();
+			return new assign_stmt(id(t.s), assign_op::incr, nullptr);
+		}
+		else if (t.s == "--")
+		{
+			t = tk.get_token();
+			return new assign_stmt(id(t.s), assign_op::deincr, nullptr);
+		}
+	}
 	if (t.tp != token_type::id) throw exception("invalid assign stmt");
 	id ddd(t.s);
 	t = tk.get_token();
-	return matchv<string, stmt*>(t.s,
+	if(t.s == "=")
 	{
-		{ "=", [&] 
-		{
-			expr* x = parse_expr(tk);
-			return new assign_stmt(ddd, assign_op::equal, x);
-		},
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::equal, x);
 	}
-	}, [&] { throw exception("invalid assignment operator"); });
+	else if (t.s == "+=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::plus_equal, x);
+	}
+	else if (t.s == "-=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::minus_equal, x);
+	}
+	else if (t.s == "*=")	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::mul_equal, x);
+	}
+	else if (t.s == "/=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::div_equal, x);
+	}
+	else
+	{
+		throw exception("invalid assignment operator");
+	}
+	//return matchv<string, assign_stmt*>(t.s,
+	//{
+	//	{ "=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::equal, x);
+	//	} },
+	//	{ "+=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::plus_equal, x);
+	//	} },
+	//	{ "-=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::minus_equal, x);
+	//	} },
+	//	{ "*=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::mul_equal, x);
+	//	} },
+	//	{ "/=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::div_equal, x);
+	//	} },
+	//	{ "++", [&]
+	//	{
+	//		return new assign_stmt(ddd, assign_op::incr, nullptr);
+	//	} },
+	//	{ "--", [&]
+	//	{
+	//		return new assign_stmt(ddd, assign_op::deincr, nullptr);
+	//	} },
+
+	//}, [&] { throw exception("invalid assign stmt"); });
 }
 
 stmt* parse_assign_stmt(tokenizer& tk, string* already_parsed_id)
 {
+	auto t = tk.get_token();
+	id ddd(*already_parsed_id);
+	if (t.s == "=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::equal, x);
+	}
+	else if (t.s == "+=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::plus_equal, x);
+	}
+	else if (t.s == "-=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::minus_equal, x);
+	}
+	else if (t.s == "*=")	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::mul_equal, x);
+	}
+	else if (t.s == "/=")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::div_equal, x);
+	}
+	else if (t.s == "++")
+	{
+		return new assign_stmt(ddd, assign_op::incr, nullptr);
+	}
+	else if (t.s == "--")
+	{
+		return new assign_stmt(ddd, assign_op::deincr, nullptr);
+	}
+	else
+	{
+		throw exception("invalid assignment operator");
+	}
+	//return matchv<string, stmt*>(t.s,
+	//{
+	//	{ "=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::equal, x);
+	//	} },
+	//	{ "+=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::plus_equal, x);
+	//	} },
+	//	{ "-=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::minus_equal, x);
+	//	} },
+	//	{ "*=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::mul_equal, x);
+	//	} },
+	//	{ "/=", [&]
+	//	{
+	//		expr* x = parse_expr(tk);
+	//		return new assign_stmt(ddd, assign_op::div_equal, x);
+	//	} },
+	//	{ "++", [&]
+	//	{
+	//		return new assign_stmt(ddd, assign_op::incr, nullptr);
+	//	} },
+	//	{ "--", [&]
+	//	{
+	//		return new assign_stmt(ddd, assign_op::deincr, nullptr);
+	//	} },
+
+	//}, [&] { throw exception("invalid assign stmt"); });
 }
+
+stmt* parse_stmt(tokenizer& tk, bool allow_multi = true);
 
 stmt* parse_if_stmt(tokenizer& tk)
 {
-	return nullptr;
-}
-stmt* parse_while_stmt(tokenizer& tk)
-{
-	return nullptr;
-}
-stmt* parse_for_stmt(tokenizer& tk)
-{
-	return nullptr;
-}
-stmt* parse_return_stmt(tokenizer& tk)
-{
-	return nullptr;
+	auto t = tk.get_token();
+	if (t.tp != token_type::special && t.s != "(") throw exception("invalid if stmt"); //eat opening (
+	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ")") throw exception("invalid if stmt"); //eat closing )
+	stmt* st = parse_stmt(tk, false);
+	t = tk.get_token();
+	if (t.tp == token_type::id && t.s == "else")
+	{
+		stmt* et = parse_stmt(tk, false);
+		return new if_stmt(cond, st, et);
+	}
+	else tk.put_back(t);
+	return new if_stmt(cond, st);
 }
 
-stmt* parse_stmt(tokenizer& tk)
+stmt* parse_while_stmt(tokenizer& tk)
+{
+	auto t = tk.get_token(); 
+	if (t.tp != token_type::special && t.s != "(") 
+		throw exception("invalid while stmt"); //eat opening (
+	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ")")
+		throw exception("invalid while stmt"); //eat closing (
+	stmt* st = parse_stmt(tk, false);
+	return new while_stmt(cond, st);
+}
+
+stmt* parse_for_stmt(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	if(t.tp == token_type::id)
+	if (t.tp != token_type::special && t.s != "(")
+		throw exception("invalid for stmt"); //eat opening (
+
+	stmt* is = parse_stmt(tk, false);
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ";")
+		throw exception("invalid for stmt"); //eat ;
+
+	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ";")
+		throw exception("invalid for stmt"); //eat ;
+
+	stmt* incrs = parse_stmt(tk, false);
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ")")
+		throw exception("invalid for stmt"); //eat closing (
+
+	stmt* b = parse_stmt(tk);
+
+	return new for_stmt(is, cond, incrs, b);
+}
+
+stmt* parse_return_stmt(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::end || 
+		(t.tp != token_type::special && t.s != ";"))
 	{
-		return matchv<string, stmt*>(t.s,
-		{
-			{ "if", [&] { return parse_if_stmt(tk); } },
-			{ "while", [&] { return parse_while_stmt(tk); }  },
-			{ "for", [&] { return parse_for_stmt(tk); }  },
-			{ "return", [&] { return parse_return_stmt(tk); }  },
-		}, [&] 
+		tk.put_back(t);
+		return new return_stmt(parse_expr(tk));
+	}
+	else
+	{
+		tk.put_back(t);
+		return new return_stmt;
+	}
+}
+
+stmt* parse_stmt(tokenizer& tk, bool allow_multi)
+{
+	stmt* s = nullptr;
+	auto t = token();
+	while(true)
+	{
+		t = tk.get_token();
+		if (t.s == "}")
 		{
 			tk.put_back(t);
-			s_type* tp = parse_type(tk);
-			t = tk.get_token();
-			if(tp != nullptr) //decl stmt
+			return s;
+		}
+		if (t.tp == token_type::end) return s;
+		if(t.tp == token_type::id)
+		{
+			if (t.s == "if")
 			{
-				if (t.tp == token_type::id)
+				s = parse_if_stmt(tk);
+				stmt* nx = parse_stmt(tk);
+				if (nx != nullptr)
+					s = new multi_stmt(s, nx);
+			}
+			else if (t.s == "while") 
+			{
+				s = parse_while_stmt(tk);
+				stmt* nx = parse_stmt(tk);
+				if (nx != nullptr)
+					s = new multi_stmt(s, nx);
+			}
+			else if (t.s == "for")
+			{ 
+				s = parse_for_stmt(tk);
+				stmt* nx = parse_stmt(tk);
+				if (nx != nullptr)
+					s = new multi_stmt(s, nx);
+			}
+			else if (t.s == "return") s =  parse_return_stmt(tk);
+			else
+			{
+				tk.put_back(t);
+				s_type* tp = parse_type(tk);
+				t = tk.get_token();
+				if (tp != nullptr) //decl stmt
 				{
-					tk.put_back(t);
-					return parse_decl_stmt(tk, tp);
+					if (t.tp == token_type::special && t.s == "(")
+					{
+						t = tk.get_token();
+						string id = *tp->udt_name;
+						vector<expr*> args;
+						while (t.s != ")")
+						{
+							if (t.tp == token_type::special && t.s == ",")
+							{
+								t = tk.get_token();
+								continue;
+							}
+	
+							tk.put_back(t);
+	
+							args.push_back(parse_expr(tk));
+	
+							t = tk.get_token();
+						}
+						s =  new func_invoke_stmt(id, args);
+					}
+					else if (t.tp == token_type::id)
+					{
+						tk.put_back(t);
+						s =  parse_decl_stmt(tk, tp);
+					}
+					else
+					{
+						//assign stmt w/ "udt" name as <id>
+						tk.put_back(t);
+						s =  parse_assign_stmt(tk, tp->udt_name);
+					}
 				}
 				else
 				{
-					//assign stmt w/ "udt" name as <id>
-					tk.put_back(t);
-					return parse_assign_stmt(tk, tp->udt_name);
-				}
-			}
-			else
-			{
-				if (t.tp == token_type::id)
-				{
+					
 					//assign stmt
 					tk.put_back(t);
-					return parse_assign_stmt(tk);
+					s =  parse_assign_stmt(tk);
 				}
 			}
-			throw exception("invalid stmt");
-		});
+		}
+		else if (t.tp == token_type::special)
+		{
+			if(t.s == "++" || t.s == "--")
+			{
+				//assign stmt
+				tk.put_back(t);
+				s =  parse_assign_stmt(tk);
+			}
+			else if (t.s == ";" && allow_multi)
+			{
+				s = new multi_stmt(s, parse_stmt(tk));
+			}
+			else if(t.s == "{")
+			{
+				stmt* ns = parse_stmt(tk);
+				t = tk.get_token();
+				if (t.s != "}") throw exception("missing closing }");
+				//stmt* nx = parse_stmt(tk);
+				s = new block_stmt(ns);
+			}
+		}
+		if (!allow_multi) return s;
 	}
-}
+	throw exception("invalid stmt");
+}	
 
 
 int main()
 {
-	tokenizer tkn("");
-	auto x = parse_bool_expr(tkn);
+	tokenizer tkn("	vec4 p = vec4(input.pos, 1.0);"
+		"output.pos = p*wvp;"
+	"output.posW = input.pos;"
+	"output.normW = input.norm * inw;"
+	"output.texc = input.tex; ");
+	auto x = parse_stmt(tkn);
 	getchar();
 }

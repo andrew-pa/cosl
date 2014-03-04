@@ -220,11 +220,15 @@ struct stmt
 struct multi_stmt : public stmt
 {
 	stmt* f, *s;
+	multi_stmt(stmt* ff, stmt* ss)
+		: f(ff), s(ss) {}
 };
 
 struct block_stmt : public stmt
 {
 	stmt* s;
+	block_stmt(stmt* _)
+		: s(_){}
 };
 
 enum class assign_op
@@ -237,6 +241,8 @@ struct assign_stmt : public stmt
 	id name;
 	assign_op op;
 	expr* xpr;
+	assign_stmt(id nm, assign_op o, expr* x)
+		: name(nm), op(o), xpr(x){}
 };
 
 struct decl_stmt : public stmt
@@ -253,12 +259,16 @@ struct if_stmt : public stmt
 	bool_expr* xpr;
 	stmt* body;
 	stmt* else_body;
+	if_stmt(bool_expr* x, stmt* b, stmt* e = nullptr)
+		: xpr(x), body(b), else_body(e)	 {}
 };
 
 struct while_stmt : public stmt
 {
 	bool_expr* xpr;
 	stmt* body;
+	while_stmt(bool_expr* x, stmt* b)
+		: xpr(x), body(b)	 {}
 };
 
 struct for_stmt : public stmt
@@ -267,17 +277,25 @@ struct for_stmt : public stmt
 	bool_expr* cond;
 	stmt* incr_stmt;
 	stmt* body;
+	for_stmt(stmt* i, bool_expr* c, stmt* ic, stmt* b)
+		: init_stmt(i), cond(c), incr_stmt(ic), body(b)
+	{
+	}
 };
 
 struct func_invoke_stmt : public stmt
 {
 	string func_name;
 	vector<expr*> args;
+	func_invoke_stmt(string n, vector<expr*> a)
+		: func_name(n), args(a){}
 };
 
 struct return_stmt : public stmt
 {
 	expr* rval;
+	return_stmt(expr* r = nullptr)
+		: rval(r) {}
 };
 
 #pragma endregion

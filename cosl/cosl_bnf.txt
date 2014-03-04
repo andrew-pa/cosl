@@ -19,7 +19,7 @@
 
 <cbuffer_block> := 'cbuffer' '(' #NUM(int) ')' '{' <decl_block> '}' ; number is the register idx
 
-<texture1D_def> := 'texture1D' #ID '(' #NUM(int) ')' ; number is the register idx
+<texture1D_def> := 'texture1D' #ID '(' #NUM(int) ')' ; number is the register id
 <texture2D_def> := 'texture2D' #ID '(' #NUM(int) ')' ; number is the register idx
 <texture3D_def> := 'texture3D' #ID '(' #NUM(int) ')' ; number is the register idx
 <texture_cube_def> := 'texture_cube' #ID '(' #NUM(int) ')' ; number is the register idx
