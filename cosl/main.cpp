@@ -332,6 +332,7 @@ s_type* parse_type(tokenizer& tk)
 	else if (t.s == "uint") return new s_type(base_s_type::uint_t);
 	else if (t.s == "float") return new s_type(base_s_type::float_t);
 	else if (t.s == "double") return new s_type(base_s_type::double_t);
+	else if (t.s == "void") return new s_type(base_s_type::void_t);
 	else
 	{ //could use regex, but i'm lazy
 		string base_type;
@@ -764,6 +765,7 @@ decl parse_decl(tokenizer& tk)
 	t = tk.get_token();
 	if (t.s != ":")
 	{
+		tk.put_back(t);
 		return decl(tp, nm, nullptr);
 	}
 	return decl(tp, nm, parse_semantic(tk));
@@ -786,6 +788,7 @@ decl_block* parse_decl_block(tokenizer& tk)
 			{
 				continue;
 			}
+			tk.put_back(t);
 			dcl.push_back(parse_decl(tk));
 			t = tk.get_token();
 			continue;
@@ -799,14 +802,10 @@ decl_block* parse_decl_block(tokenizer& tk)
 
 input_block* parse_input_block(tokenizer& tk)
 {
-	auto t = tk.get_token();/*
-	if (t.s != "input") throw exception("invalid input block");*/
 	return static_cast<input_block*>(parse_decl_block(tk));
 }
 output_block* parse_output_block(tokenizer& tk)
 {
-	auto t = tk.get_token();/*
-	if (t.s != "output") throw exception("invalid output block");*/
 	return static_cast<output_block*>(parse_decl_block(tk));
 }
 cbuffer_block* parse_cbuffer_block(tokenizer& tk)
@@ -852,16 +851,56 @@ texture_def* parse_texture_def(tokenizer& tk)
 	return new texture_def(txtp, nm, ix);
 }
 
+sfunction* parse_function_def(tokenizer& tk)
+{
+	s_type* tp = parse_type(tk);
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("invalid function def");
+	string name = t.s;
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != "(") throw exception("invalid function def");
+	
+	vector<sfunction::func_arg> args;
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ")")
+	{
+		while(!(t.tp == token_type::special && t.s == ")"))
+		{
+			if(t.s == ",")
+			{
+				t = tk.get_token();
+				continue;
+			}
+			
+			s_type* at = parse_type(tk);
+			t = tk.get_token();
+			if (t.tp != token_type::id) throw exception("invalid function arg");
+			args.push_back(sfunction::func_arg(at, t.s));
+			t = tk.get_token();
+		}
+	}
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != "{") throw exception("invalid function def");
+
+	auto st = parse_stmt(tk);
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != "}") throw exception("invalid function def");
+
+	return new sfunction(tp, name, args, st);
+}
+
 shader_file* parse_shader(tokenizer& tk)
 {
 	shader_file* sf = new shader_file;
 	auto t = tk.get_token();
 	if (t.tp != token_type::id) throw exception("shader type decl missing");
-	sf->type = matchv<string, shader_type>(t.s, 
-	{
-		{ "$vertex_shader", [&] { return shader_type::vertex_shader; } },
-		{ "$pixel_shader", [&] { return shader_type::pixel_shader; } },
-	}, (shader_type)-1);
+	if (t.s == "$vertex_shader") sf->type = shader_type::vertex_shader;
+	else if (t.s == "$pixel_shader") sf->type = shader_type::pixel_shader;
+	else throw exception("invalid shader type");
+
 	while(t.tp != token_type::end)
 	{
 		t = tk.get_token();
@@ -892,8 +931,10 @@ shader_file* parse_shader(tokenizer& tk)
 			{
 				tk.put_back(t);
 				sf->functions.push_back(parse_function_def(tk));
+				continue;
 			}
 		}
+		if (t.tp == token_type::end) break;
 		else
 		{
 			throw exception("invalid file decl");
@@ -904,14 +945,48 @@ shader_file* parse_shader(tokenizer& tk)
 
 int main()
 {
-	tokenizer tkn("	vec4 p = vec4(input.pos, 1.0);"
-		"output.pos = p*wvp;"
-	"output.posW = input.pos;"
-	"output.normW = input.norm * inw;"
-	"output.texc = input.tex; ");
-	auto x = parse_stmt(tkn);
+	//tokenizer tkn("	vec4 p = vec4(input.pos, 1.0);"
+	//	"output.pos = p*wvp;"
+	//"output.posW = input.pos;"
+	//"output.normW = input.norm * inw;"
+	//"output.texc = input.tex; ");
+	//auto x = parse_stmt(tkn);
 
-	tokenizer tkn2("{ float depth : depth32; }");
-	auto x2 = parse_decl_block(tkn2);
+	//tokenizer tkn2("{ float depth : depth32; }");
+	//auto x2 = parse_decl_block(tkn2);
+	//getchar();
+
+	tokenizer tkn("$vertex_shader"
+	"	input"
+	"{"
+	"	vec3 pos;"
+	"	vec3 norm;"
+	"	vec3 tex;"
+	"}"
+	
+	"	output"
+	"{"
+	"	vec3 pos : rs_position;"
+	"	vec3 posW;"
+	"	vec3 normW;"
+	"	vec3 texc;"
+	"}"
+
+	"	cbuffer(0)"
+	"{"
+	"		mat4 wvp;"
+	"		mat4 inw;"
+	"		vec4 t;"
+	"}"
+
+	"void main()"
+	"{"
+	"	vec4 p = vec4(input.pos, 1.0);"
+	"	output.pos = p*wvp;"
+	"	output.posW = input.pos;"
+	"	output.normW = input.norm * inw;"
+	"	output.texc = input.tex;"
+	"}");
+	auto sh = parse_shader(tkn);
 	getchar();
 }

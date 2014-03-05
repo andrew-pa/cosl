@@ -1,8 +1,12 @@
 #include "tokenizer.h"
 
+bool is_whitespace(char c)
+{
+	return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
 bool is_delimiter(char c, bool plain)
 {
-	return (c == ' ' || c == ';' || c == ',' ||
+	return is_whitespace(c) || (c == ' ' || c == ';' || c == ',' ||
 		c == '(' || c == ')' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || (!plain ? (c == '"' || c == '\'') : false)
 		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}');
 }
@@ -22,12 +26,14 @@ bool is_numeric_body(char c)
 	return isdigit(c) || c == '.';
 }
 
+
+
 token tokenizer::next_token()
 {
 	if (idx == s.size()) return end_token();
 	for (; idx < s.size(); ++idx)
 	{
-		if (iswspace(s[idx]))
+		if (is_whitespace(s[idx]))
 		{
 			continue;
 		}

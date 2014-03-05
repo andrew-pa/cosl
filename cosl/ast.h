@@ -10,7 +10,7 @@ enum class base_s_type
 {
 	bool_t, int_t, uint_t, float_t, double_t,
 	bvec_t, ivec_t, uvec_t, vec_t, dvec_t,
-	mat_t, dmat_t, user_def_t,
+	mat_t, dmat_t, user_def_t, void_t
 };
 
 struct s_type
@@ -87,7 +87,7 @@ public:
 	texture_type type;
 	string name;
 	uint reg_idx;
-	texture_def(texture_type t, string n, uint rx)
+	texture_def(texture_type t, const string& n, uint rx)
 		: type(t), name(n), reg_idx(rx){}
 };
 
@@ -327,15 +327,19 @@ struct return_stmt : public stmt
 
 struct sfunction
 {
-	s_type type;
+	s_type* return_type;
 	string name;
 	struct func_arg
 	{
-		s_type typ;
+		s_type* typ;
 		string nmn;
+		func_arg(s_type* t, const string& n)
+			: typ(t), nmn(n){}
 	};
 	vector<func_arg> args;
 	stmt* body;
+	sfunction(s_type* rt, const string& n, const vector<func_arg>& farg, stmt* bd)
+		: return_type(rt), name(n), args(farg), body(bd){}
 };
 
 struct shader_file
