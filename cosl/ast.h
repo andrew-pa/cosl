@@ -31,26 +31,49 @@ struct s_type
 
 };
 
-typedef string semantic;
+struct semantic
+{
+	string name;
+	uint idx;
+	semantic(string n, uint i)
+		: name(n), idx(i)
+	{}
+};
 
 struct decl
 {
-	s_type type;
+	s_type* type;
 	string name;
-	semantic sem;
+	semantic* sem;
+	decl(s_type* t, string n, semantic* s)
+		: type(t), name(n), sem(s) {}
 };
+
 struct decl_block
 {
 	vector<decl> decls;
+	decl_block(vector<decl>& d)
+		: decls(d)	{}
 };
 
-typedef decl_block input_block; 
-typedef decl_block output_block; 
+class input_block : public decl_block 
+{
+	input_block(vector<decl>& d)
+		: decl_block(d)	{}
+};//typedef decl_block input_block; 
+class output_block : public decl_block 
+{
+	output_block(vector<decl>& d)
+		: decl_block(d)	{}
+};//typedef decl_block output_block; 
 
-struct cbuffer_block : public decl_block
+struct cbuffer_block
 {
 public:
 	uint reg_idx;
+	decl_block* dclbk;
+	cbuffer_block(uint i, decl_block* dcl)
+		: reg_idx(i), dclbk(dcl)	{}
 };
 
 enum class texture_type
@@ -64,6 +87,8 @@ public:
 	texture_type type;
 	string name;
 	uint reg_idx;
+	texture_def(texture_type t, string n, uint rx)
+		: type(t), name(n), reg_idx(rx){}
 };
 
 struct id
@@ -317,9 +342,9 @@ struct shader_file
 {
 public:
 	shader_type type;
-	input_block inpblk;
-	output_block outblk;
-	vector<cbuffer_block> cbuffers;
-	vector<texture_def> texturedefs;
-	vector<sfunction> functions;
+	input_block* inpblk;
+	output_block* outblk;
+	vector<cbuffer_block*> cbuffers;
+	vector<texture_def*> texturedefs;
+	vector<sfunction*> functions;
 };

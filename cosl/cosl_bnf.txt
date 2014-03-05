@@ -10,14 +10,14 @@
 			| 'bvec'[2-4] | 'ivec'[2-4] | 'uvec'[2-4] | 'vec'[2-4] | 'dvec'[2-4]
 			| 'mat'[2-4]'x'[[2-4]*] | 'dmat'[2-4]['x'[2-4]*]
 			| #ID ;struct name
-<semantic> := 'rs_position' | 'target'#NUM(int)	| 
+<semantic> := 'rs_position' | 'target'#NUM(int)	| depth#NUM(int)
 
-<decl_block> := (<typename> #ID [':' <semantic>] ;)+
+<decl_block> := '{' (<typename> #ID [':' <semantic>] ;)+ '}'
 
-<input_block> := 'input' '{' <decl_block> '}'
-<output_block> := 'output' '{' <decl_block> '}'
+<input_block> := 'input' <decl_block>
+<output_block> := 'output' <decl_block>
 
-<cbuffer_block> := 'cbuffer' '(' #NUM(int) ')' '{' <decl_block> '}' ; number is the register idx
+<cbuffer_block> := 'cbuffer' '(' #NUM(int) ')'  <decl_block> ; number is the register idx
 
 <texture1D_def> := 'texture1D' #ID '(' #NUM(int) ')' ; number is the register id
 <texture2D_def> := 'texture2D' #ID '(' #NUM(int) ')' ; number is the register idx

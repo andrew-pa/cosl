@@ -742,6 +742,165 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 	throw exception("invalid stmt");
 }	
 
+semantic* parse_semantic(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("invalid semantic");
+	string n = t.s;
+	int i = 0;
+	string nm;
+	for (; i < n.size() && !isdigit(n[i]); ++i) nm += n[i];
+	string ix = n.substr(i);
+	return new semantic(nm, atoi(ix.c_str()));
+}
+
+decl parse_decl(tokenizer& tk)
+{
+	s_type* tp = parse_type(tk);
+	if (tp == nullptr) throw exception("invalid type");
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("invalid decl");
+	string nm = t.s;
+	t = tk.get_token();
+	if (t.s != ":")
+	{
+		return decl(tp, nm, nullptr);
+	}
+	return decl(tp, nm, parse_semantic(tk));
+}
+
+decl_block* parse_decl_block(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (!(t.tp == token_type::special && t.s == "{"))
+		throw exception("decl block missing opening {");
+
+	vector<decl> dcl;
+
+	while (!(t.tp == token_type::special && t.s == "}"))
+	{
+		if (t.tp == token_type::special && t.s == ";")
+		{
+			t = tk.get_token();
+			if(t.tp == token_type::special && t.s == "}")
+			{
+				continue;
+			}
+			dcl.push_back(parse_decl(tk));
+			t = tk.get_token();
+			continue;
+		}
+		dcl.push_back(parse_decl(tk));
+		t = tk.get_token();
+	}
+
+	return new decl_block(dcl);
+}
+
+input_block* parse_input_block(tokenizer& tk)
+{
+	auto t = tk.get_token();/*
+	if (t.s != "input") throw exception("invalid input block");*/
+	return static_cast<input_block*>(parse_decl_block(tk));
+}
+output_block* parse_output_block(tokenizer& tk)
+{
+	auto t = tk.get_token();/*
+	if (t.s != "output") throw exception("invalid output block");*/
+	return static_cast<output_block*>(parse_decl_block(tk));
+}
+cbuffer_block* parse_cbuffer_block(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	/*if (t.s != "cbuffer") throw exception("invalid cbuffer block");*/
+	//t = tk.get_token();
+	if (t.s != "(") throw exception("invalid cbuffer block");
+	t = tk.get_token();
+	if (t.tp != token_type::number_lit) throw exception("invalid cbuffer block");
+	uint idx = atoi(t.s.c_str());
+	t = tk.get_token();
+	if (t.s != ")") throw exception("invalid cbuffer block");
+	decl_block* dcl = parse_decl_block(tk);
+	return new cbuffer_block(idx, dcl);
+}
+
+texture_def* parse_texture_def(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("invalid texture def");
+	auto txtp = matchv<string, texture_type>(t.s,
+	{
+		{ "texture1D",   [&] { return texture_type::texture1D;   } },
+		{ "texture2D",   [&] { return texture_type::texture2D;   } },
+		{ "texture3D",   [&] { return texture_type::texture3D;   } },
+		{ "textureCube", [&] { return texture_type::textureCube; } },
+	}, (texture_type)-1);
+	t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("invalid texture def");
+	string nm = t.s;
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != "(") throw exception("invalid texture def: missing opening (");
+	
+	t = tk.get_token();
+	if (t.tp != token_type::number_lit) throw exception("invalid texture def: invalid idx");
+	uint ix = atoi(t.s.c_str());
+
+	t = tk.get_token();
+	if (t.tp != token_type::special && t.s != ")") throw exception("invalid texture def: missing closing )");
+
+	return new texture_def(txtp, nm, ix);
+}
+
+shader_file* parse_shader(tokenizer& tk)
+{
+	shader_file* sf = new shader_file;
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("shader type decl missing");
+	sf->type = matchv<string, shader_type>(t.s, 
+	{
+		{ "$vertex_shader", [&] { return shader_type::vertex_shader; } },
+		{ "$pixel_shader", [&] { return shader_type::pixel_shader; } },
+	}, (shader_type)-1);
+	while(t.tp != token_type::end)
+	{
+		t = tk.get_token();
+		if (t.tp == token_type::id)
+		{
+			if(t.s == "input")
+			{
+				sf->inpblk = parse_input_block(tk);
+				continue;
+			}
+			else if(t.s == "output")
+			{
+				sf->outblk = parse_output_block(tk);
+				continue;
+			}
+			else if(t.s == "cbuffer")
+			{
+				sf->cbuffers.push_back(parse_cbuffer_block(tk));
+				continue;
+			}
+			else if(t.s == "texture1D" || t.s == "texture2D" || t.s == "texture3D" || t.s == "textureCube")
+			{
+				tk.put_back(t);
+				sf->texturedefs.push_back(parse_texture_def(tk));
+				continue;
+			}
+			else 
+			{
+				tk.put_back(t);
+				sf->functions.push_back(parse_function_def(tk));
+			}
+		}
+		else
+		{
+			throw exception("invalid file decl");
+		}
+	}
+	return sf;
+}
 
 int main()
 {
@@ -751,5 +910,8 @@ int main()
 	"output.normW = input.norm * inw;"
 	"output.texc = input.tex; ");
 	auto x = parse_stmt(tkn);
+
+	tokenizer tkn2("{ float depth : depth32; }");
+	auto x2 = parse_decl_block(tkn2);
 	getchar();
 }
