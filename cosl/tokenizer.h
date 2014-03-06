@@ -62,7 +62,10 @@ struct end_token : public token
 	end_token() : token(token_type::end, string("end")) {}
 };
 
+
+#ifdef DEBUG_AT_LINE
 #define get_token() _get_token(__LINE__, __FILE__)
+#endif
 
 class tokenizer
 {
@@ -77,6 +80,7 @@ public:
 		: s(s_), full(false), idx(0)
 	{ }
 
+#ifdef DEBUG_AT_LINE
 	inline token _get_token(int line, const char* file)
 	{
 		if (full)
@@ -93,6 +97,18 @@ public:
 		cout << endl;
 		return t;
 	}
+#else
+	inline token get_token()
+	{
+		if (full)
+		{
+			full = false;
+			return buf;
+		}
+		auto t = next_token();
+		return t;
+	}
+#endif
 
 	inline void put_back(const token& t)
 	{

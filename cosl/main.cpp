@@ -962,8 +962,8 @@ int main()
 	//auto x2 = parse_decl_block(tkn2);
 	//getchar();
 
-	tokenizer tkn("$vertex_shader"
-	"	input"
+	tokenizer tkn("$vertex_shader //this should be considered white space\n"
+	"	input /*so should this be*/"
 	"{"
 	"	vec3 pos;"
 	"	vec3 norm;"

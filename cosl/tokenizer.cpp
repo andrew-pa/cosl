@@ -48,10 +48,12 @@ token tokenizer::next_token()
 		}
 		if (s[idx] == '/' && idx + 1 < s.size() && s[idx + 1] == '*')
 		{
+			idx += 2;
 			while (s[idx] != '*' && idx+1 < s.size() && s[idx+1] != '/')
 			{
 				idx++;
 			}
+			idx++;
 			continue;
 		}
 
