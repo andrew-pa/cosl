@@ -1,6 +1,15 @@
 #pragma once
 #include "cmmn.h"
 
+class code_emitter;
+
+class ast_node
+{
+public:
+	virtual void emit(code_emitter* ce) = 0;
+	virtual ~ast_node(){}
+};
+
 enum class shader_type
 {
 	vertex_shader, pixel_shader,
@@ -13,7 +22,7 @@ enum class base_s_type
 	mat_t, dmat_t, user_def_t, void_t
 };
 
-struct s_type
+struct s_type : public ast_node
 {
 	base_s_type type;
 	uint vecdim;
@@ -28,10 +37,11 @@ struct s_type
 		: type(t), vecdim(vd), matdim(md), udt_name(nullptr) {}
 	s_type(const string& udt_nm)
 		: type(base_s_type::user_def_t), udt_name(new string(udt_nm)), vecdim(-1), matdim(-1) {}
-
+	
+	void emit(code_emitter* ce) override;
 };
 
-struct semantic
+struct semantic 
 {
 	string name;
 	uint idx;
@@ -40,40 +50,53 @@ struct semantic
 	{}
 };
 
-struct decl
+struct decl : public ast_node
 {
 	s_type* type;
 	string name;
 	semantic* sem;
 	decl(s_type* t, string n, semantic* s)
 		: type(t), name(n), sem(s) {}
+	void emit(code_emitter* ce) override;
 };
 
-struct decl_block
+struct decl_block : public ast_node
 {
 	vector<decl> decls;
 	decl_block(vector<decl>& d)
 		: decls(d)	{}
+
+
+	void emit(code_emitter* ce) override;
 };
 
-class input_block : public decl_block 
+struct input_block : public ast_node
 {
+	decl_block* db;
 	input_block(vector<decl>& d)
-		: decl_block(d)	{}
+		: db(new decl_block(d))	{}
+	input_block(decl_block* d)
+		: db(d)	{}
+	void emit(code_emitter* ce) override;
 };//typedef decl_block input_block; 
-class output_block : public decl_block 
+struct output_block  : public ast_node
 {
+	decl_block* db;
 	output_block(vector<decl>& d)
-		: decl_block(d)	{}
+		: db(new decl_block(d))	{}
+	output_block(decl_block* d)
+		: db(d)	{}
+	void emit(code_emitter* ce) override;
 };//typedef decl_block output_block; 
 
-struct cbuffer_block
+struct cbuffer_block : public ast_node
 {
 public:
 	uint reg_idx;
 	decl_block* dclbk;
 	cbuffer_block(uint i, decl_block* dcl)
 		: reg_idx(i), dclbk(dcl)	{}
+	void emit(code_emitter* ce) override;
 };
 
 enum class texture_type
@@ -81,7 +104,7 @@ enum class texture_type
 	texture1D, texture2D, texture3D, textureCube,
 };
 
-struct texture_def 
+struct texture_def : public ast_node
 {
 public:
 	texture_type type;
@@ -89,9 +112,10 @@ public:
 	uint reg_idx;
 	texture_def(texture_type t, const string& n, uint rx)
 		: type(t), name(n), reg_idx(rx){}
+	void emit(code_emitter* ce) override;
 };
 
-struct id
+struct id : public ast_node
 {
 	string base_name;
 	vector<string> members;
@@ -121,11 +145,12 @@ struct id
 			members = vector<string>(parts.begin() + 1, parts.end());
 		}
 	}
+	void emit(code_emitter* ce) override;
 };
 
 #pragma region expr
 
-struct expr
+struct expr : public ast_node
 {
 	virtual ~expr(){}
 };
@@ -145,6 +170,7 @@ struct id_primary : public primary
 	id _id;
 	id_primary(id _d)
 		: _id(_d) {}
+	void emit(code_emitter* ce) override;
 };
 
 struct num_primary : public primary
@@ -153,6 +179,7 @@ struct num_primary : public primary
 	num_primary() {}
 	num_primary(const string& s)
 		: num(s) {}
+	void emit(code_emitter* ce) override;
 };
 
 struct func_invoke_primary : public primary
@@ -162,6 +189,7 @@ struct func_invoke_primary : public primary
 	func_invoke_primary(const string& n, const vector<expr*>& g)
 		: func_name(n), args(g)
 	{}
+	void emit(code_emitter* ce) override;
 };
 
 
@@ -171,6 +199,15 @@ struct primary_term : public term
 	primary* p;
 	primary_term(): p(nullptr){}
 	primary_term(primary*_p) :p(_p){}
+	void emit(code_emitter* ce) override;
+};
+
+struct expr_in_paren : public primary
+{
+	expr* x;
+	expr_in_paren() : x(nullptr){}
+	expr_in_paren(expr* xp) : x(xp){}
+	void emit(code_emitter* ce) override;
 };
 
 struct mul_term : public term
@@ -180,6 +217,7 @@ struct mul_term : public term
 	mul_term() {}
 	mul_term(term* l, primary* p)
 		: left(l), right(p){}
+	void emit(code_emitter* ce) override;
 };
 struct div_term : public term
 {
@@ -188,6 +226,7 @@ struct div_term : public term
 	div_term() {}
 	div_term(term* l, primary* p)
 		: left(l), right(p){}
+	void emit(code_emitter* ce) override;
 };
 
 
@@ -197,6 +236,7 @@ struct add_expr : public expr
 	term* right;
 	add_expr(expr* l, term* r)
 		: left(l), right(r){}
+	void emit(code_emitter* ce) override;
 };
 struct sub_expr : public expr
 {
@@ -204,20 +244,26 @@ struct sub_expr : public expr
 	term* right;
 	sub_expr(expr* l, term* r)
 		: left(l), right(r){}
+	void emit(code_emitter* ce) override;
 };
 
 struct bool_expr : public expr
 {
 };
 
-struct true_bexpr : public bool_expr {};
-struct false_bexpr : public bool_expr {};
+struct true_bexpr : public bool_expr {
+	void emit(code_emitter* ce) override;
+};
+struct false_bexpr : public bool_expr {
+	void emit(code_emitter* ce) override;
+};
 
 struct not_bexpr : public bool_expr
 {
 	bool_expr* xpr;
 	not_bexpr(bool_expr* x)
 		: xpr(x){}
+	void emit(code_emitter* ce) override;
 };
 
 enum bool_op
@@ -231,13 +277,14 @@ struct binary_bexpr : public bool_expr
 	expr* left, *right;
 	binary_bexpr(expr* l, bool_op o, expr* r)
 		: left(l), right(r), op(o){}
+	void emit(code_emitter* ce) override;
 };
 
 #pragma endregion
 
 #pragma region stmt
 
-struct stmt
+struct stmt : public ast_node
 {
 	virtual ~stmt(){}
 };
@@ -247,6 +294,7 @@ struct multi_stmt : public stmt
 	stmt* f, *s;
 	multi_stmt(stmt* ff, stmt* ss)
 		: f(ff), s(ss) {}
+	void emit(code_emitter* ce) override;
 };
 
 struct block_stmt : public stmt
@@ -254,11 +302,12 @@ struct block_stmt : public stmt
 	stmt* s;
 	block_stmt(stmt* _)
 		: s(_){}
+	void emit(code_emitter* ce) override;
 };
 
 enum class assign_op
 {
-	equal, plus_equal, minus_equal, incr, deincr, mul_equal, div_equal,
+	equal, plus_equal, minus_equal, pre_incr, pre_deincr, post_incr, post_deincr, mul_equal, div_equal,
 };
 
 struct assign_stmt : public stmt
@@ -268,6 +317,7 @@ struct assign_stmt : public stmt
 	expr* xpr;
 	assign_stmt(id nm, assign_op o, expr* x)
 		: name(nm), op(o), xpr(x){}
+	void emit(code_emitter* ce) override;
 };
 
 struct decl_stmt : public stmt
@@ -277,6 +327,7 @@ struct decl_stmt : public stmt
 	expr* init_xpr;
 	decl_stmt(s_type* t, const string& n, expr* ix = nullptr)
 		: typ(t), name(n), init_xpr(ix) {}
+	void emit(code_emitter* ce) override;
 };
 
 struct if_stmt : public stmt
@@ -286,6 +337,7 @@ struct if_stmt : public stmt
 	stmt* else_body;
 	if_stmt(bool_expr* x, stmt* b, stmt* e = nullptr)
 		: xpr(x), body(b), else_body(e)	 {}
+	void emit(code_emitter* ce) override;
 };
 
 struct while_stmt : public stmt
@@ -294,6 +346,7 @@ struct while_stmt : public stmt
 	stmt* body;
 	while_stmt(bool_expr* x, stmt* b)
 		: xpr(x), body(b)	 {}
+	void emit(code_emitter* ce) override;
 };
 
 struct for_stmt : public stmt
@@ -306,6 +359,7 @@ struct for_stmt : public stmt
 		: init_stmt(i), cond(c), incr_stmt(ic), body(b)
 	{
 	}
+	void emit(code_emitter* ce) override;
 };
 
 struct func_invoke_stmt : public stmt
@@ -314,6 +368,7 @@ struct func_invoke_stmt : public stmt
 	vector<expr*> args;
 	func_invoke_stmt(string n, vector<expr*> a)
 		: func_name(n), args(a){}
+	void emit(code_emitter* ce) override;
 };
 
 struct return_stmt : public stmt
@@ -321,11 +376,12 @@ struct return_stmt : public stmt
 	expr* rval;
 	return_stmt(expr* r = nullptr)
 		: rval(r) {}
+	void emit(code_emitter* ce) override;
 };
 
 #pragma endregion
 
-struct sfunction
+struct sfunction : public ast_node
 {
 	s_type* return_type;
 	string name;
@@ -340,6 +396,7 @@ struct sfunction
 	stmt* body;
 	sfunction(s_type* rt, const string& n, const vector<func_arg>& farg, stmt* bd)
 		: return_type(rt), name(n), args(farg), body(bd){}
+	void emit(code_emitter* ce) override;
 };
 
 struct shader_file

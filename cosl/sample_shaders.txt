@@ -3,9 +3,9 @@
 $vertex_shader
 input
 {
-	vec3 pos;
-	vec3 norm;
-	vec3 tex;
+	vec3 pos : position;
+	vec3 norm : normal;
+	vec3 tex : texcoord;
 }
 
 output
@@ -45,13 +45,9 @@ output
 	vec4 col : target0;
 }
 
-texture2D tex(0);
+texture2D tex(0)
 
 void main()
 {
 	output.col = sample2D(tex, input.texc);
-} 
-
-for(int i = 0; i < 5; ++i)
-{
 }

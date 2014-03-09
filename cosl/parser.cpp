@@ -12,7 +12,7 @@ primary* parse_primary(tokenizer& tk)
 			expr* x = parse_expr(tk);
 			t = tk.get_token();
 			if (t.s != ")") throw exception("expected )");
-			return (primary*)(x); //nasty hacks
+			return new expr_in_paren(x);
 		}
 	}
 		break;
@@ -263,12 +263,12 @@ stmt* parse_assign_stmt(tokenizer& tk)
 		if (t.s == "++")
 		{
 			t = tk.get_token();
-			return new assign_stmt(id(t.s), assign_op::incr, nullptr);
+			return new assign_stmt(id(t.s), assign_op::pre_incr, nullptr);
 		}
 		else if (t.s == "--")
 		{
 			t = tk.get_token();
-			return new assign_stmt(id(t.s), assign_op::deincr, nullptr);
+			return new assign_stmt(id(t.s), assign_op::pre_deincr, nullptr);
 		}
 	}
 	if (t.tp != token_type::id) throw exception("invalid assign stmt");
@@ -297,6 +297,16 @@ stmt* parse_assign_stmt(tokenizer& tk)
 	{
 		expr* x = parse_expr(tk);
 		return new assign_stmt(ddd, assign_op::div_equal, x);
+	}
+	else if (t.s == "++")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::post_incr, x);
+	}
+	else if (t.s == "--")
+	{
+		expr* x = parse_expr(tk);
+		return new assign_stmt(ddd, assign_op::post_deincr, x);
 	}
 	else
 	{
@@ -371,11 +381,11 @@ stmt* parse_assign_stmt(tokenizer& tk, string* already_parsed_id)
 	}
 	else if (t.s == "++")
 	{
-		return new assign_stmt(ddd, assign_op::incr, nullptr);
+		return new assign_stmt(ddd, assign_op::post_incr, nullptr);
 	}
 	else if (t.s == "--")
 	{
-		return new assign_stmt(ddd, assign_op::deincr, nullptr);
+		return new assign_stmt(ddd, assign_op::post_deincr, nullptr);
 	}
 	else
 	{
@@ -617,7 +627,7 @@ semantic* parse_semantic(tokenizer& tk)
 	string nm;
 	for (; i < n.size() && !isdigit(n[i]); ++i) nm += n[i];
 	string ix = n.substr(i);
-	return new semantic(nm, atoi(ix.c_str()));
+	return new semantic(nm, (ix.length() == 0 ? 0xFFFFFFFF : atoi(ix.c_str())));
 }
 
 decl parse_decl(tokenizer& tk)
@@ -667,11 +677,11 @@ decl_block* parse_decl_block(tokenizer& tk)
 
 input_block* parse_input_block(tokenizer& tk)
 {
-	return static_cast<input_block*>(parse_decl_block(tk));
+	return new input_block(parse_decl_block(tk));
 }
 output_block* parse_output_block(tokenizer& tk)
 {
-	return static_cast<output_block*>(parse_decl_block(tk));
+	return new output_block(parse_decl_block(tk));
 }
 cbuffer_block* parse_cbuffer_block(tokenizer& tk)
 {
@@ -692,13 +702,18 @@ texture_def* parse_texture_def(tokenizer& tk)
 {
 	auto t = tk.get_token();
 	if (t.tp != token_type::id) throw exception("invalid texture def");
-	auto txtp = matchv<string, texture_type>(t.s,
+	texture_type txtp;
+	if (t.s == "texture1D") txtp = texture_type::texture1D;
+	if (t.s == "texture2D") txtp = texture_type::texture2D;
+	if (t.s == "texture3D") txtp = texture_type::texture3D;
+	if (t.s == "textureCube") txtp = texture_type::textureCube ;
+	/*auto txtp = matchv<string, texture_type>(t.s,
 	{
 		{ "texture1D", [&] { return texture_type::texture1D;   } },
 		{ "texture2D", [&] { return texture_type::texture2D;   } },
 		{ "texture3D", [&] { return texture_type::texture3D;   } },
 		{ "textureCube", [&] { return texture_type::textureCube; } },
-	}, (texture_type)-1);
+	}, (texture_type)-1);*/
 	t = tk.get_token();
 	if (t.tp != token_type::id) throw exception("invalid texture def");
 	string nm = t.s;

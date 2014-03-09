@@ -70,10 +70,13 @@
   <ItemGroup>
     <ClInclude Include="ast.h" />
     <ClInclude Include="cmmn.h" />
+    <ClInclude Include="code_emitter.h" />
+    <ClInclude Include="hlsl_code_emitter.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="tokenizer.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ast.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="parser.cpp" />
     <ClCompile Include="tokenizer.cpp" />

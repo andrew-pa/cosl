@@ -14,7 +14,7 @@ bool is_delimiter(char c, bool plain)
 bool is_two_char_special_first(char c)
 {
 	return c == '&' || c == '!' || c == '|' || c == '+' || c == '-' || c == '*' || c == '/'
-			 || c == '<' || c == '>';
+			 || c == '<' || c == '>' || c == '=';
 }
 bool is_two_char_special_second(char c)
 {
