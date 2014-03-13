@@ -71,6 +71,8 @@
     <ClInclude Include="ast.h" />
     <ClInclude Include="cmmn.h" />
     <ClInclude Include="code_emitter.h" />
+    <ClInclude Include="c_style_code_emitter.h" />
+    <ClInclude Include="glsl_code_emitter.h" />
     <ClInclude Include="hlsl_code_emitter.h" />
     <ClInclude Include="parser.h" />
     <ClInclude Include="tokenizer.h" />

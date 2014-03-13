@@ -37,6 +37,12 @@
     <ClInclude Include="hlsl_code_emitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="c_style_code_emitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="glsl_code_emitter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tokenizer.cpp">

@@ -26,9 +26,9 @@ cbuffer(0)
 void main()
 {
 	vec4 p = vec4(input.pos, 1.0);
-	output.pos = p*wvp;
+	output.pos = mul(p, wvp);
 	output.posW = input.pos;
-	output.normW = input.norm * inw;
+	output.normW = mul(input.norm, inw);
 	output.texc = input.tex;
 }
 
@@ -49,5 +49,5 @@ texture2D tex(0)
 
 void main()
 {
-	output.col = sample2D(tex, input.texc);
+	output.col = sample_texture(tex, input.texc);
 }

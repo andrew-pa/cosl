@@ -4,9 +4,9 @@
 #include "ast.h"
 #include "parser.h"
 #include "code_emitter.h"
+#include "c_style_code_emitter.h"
 
-
-class hlsl_code_emmiter : public code_emitter
+class hlsl_code_emitter : public c_style_code_emitter
 {
 	shader_type mode;
 
@@ -40,7 +40,7 @@ class hlsl_code_emmiter : public code_emitter
 	}
 	enum special_func_type
 	{
-		none, vector, sample,
+		none, vector, sample, math
 	}; 
 	bool is_special_func(const string& n)
 	{
@@ -77,7 +77,7 @@ class hlsl_code_emmiter : public code_emitter
 				else if (base_type == "dmat") return true;
 			}
 		}
-		if (n == "sample1D" || n == "sample2D" || n == "sample3D" || n == "sampleCube") return true;
+		if (n == "sample_texture") return true;
 		return false;
 	}
 	bool is_special_func(const string& n, special_func_type& t, string& base_type, uint& vecd, uint& matd)
@@ -117,7 +117,7 @@ class hlsl_code_emmiter : public code_emitter
 			}
 		}
 		t = special_func_type::sample;
-		if (n == "sample1D" || n == "sample2D" || n == "sample3D" || n == "sampleCube") return true;
+		if (n == "sample_texture") return true;
 		t = special_func_type::none;
 		return false;
 	}
@@ -135,12 +135,34 @@ class hlsl_code_emmiter : public code_emitter
 			else if (bt == "dvec") _out << "double" << vd;
 			else if (bt == "mat") _out << "float" << vd << "x" << md;
 			else if (bt == "dmat") _out << "double" << vd << "x" << md;
+
+			_out << "(";
+			if (x->args.size() == 1)
+			{
+				x->args[0]->emit(this);
+			}
+			else
+			{
+				int i = 0;
+				for (auto& a : x->args)
+				{
+					a->emit(this);
+					if (i != x->args.size() - 1)
+						_out << ", ";
+					i++;
+				}
+			}
+			_out << ")";
 		}
 		else if(t == special_func_type::sample)
 		{
 			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name << ",";
-			x->args[1]->emit(this);
+			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name;
+			for (int i = 1; i < x->args.size(); ++i)
+			{
+				_out << ", ";
+				x->args[i]->emit(this);
+			}
 			_out << ")";
 		}
 	}
@@ -158,27 +180,41 @@ class hlsl_code_emmiter : public code_emitter
 			else if (bt == "dvec") _out << "double" << vd;
 			else if (bt == "mat") _out << "float" << vd << "x" << md;
 			else if (bt == "dmat") _out << "double" << vd << "x" << md;
+
+			_out << "(";
+			if (x->args.size() == 1)
+			{
+				x->args[0]->emit(this);
+			}
+			else
+			{
+				int i = 0;
+				for (auto& a : x->args)
+				{
+					a->emit(this);
+					if (i != x->args.size() - 1)
+						_out << ", ";
+					i++;
+				}
+			}
+			_out << ")";
 		}
 		else if (t == special_func_type::sample)
 		{
 			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name << ",";
-			x->args[1]->emit(this);
+			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name;
+			for (int i = 1; i < x->args.size(); ++i)
+			{
+				_out << ", ";
+				x->args[i]->emit(this);
+			}
 			_out << ")";
 		}
 	}
 
-	ostringstream _out;
 public:
-	hlsl_code_emmiter()
+	hlsl_code_emitter()
 	{
-	}
-
-	string out_string() const override { return _out.str();  }
-
-	void reset() override
-	{
-		_out = ostringstream();
 	}
 
 	void emit(shader_file* sh)override
@@ -268,17 +304,6 @@ public:
 			_out << " : " << translate_semantic(x.sem);
 	}
 
-	void emit(decl_block* x)override
-	{
-		_out << "{" << endl;
-		for (auto& d : x->decls)
-		{
-			d.emit(this);
-			_out << ";" << endl;
-		}
-		_out << "}";
-	}
-
 	void emit(input_block* x)override
 	{
 		_out << "struct __shader_input_t" << endl;
@@ -335,19 +360,6 @@ public:
 		}
 	}
 
-	// void emit(expr* x)= 0;
-	// void emit(term* x)= 0;
-	// void emit(primary* x)= 0;
-	void emit(id_primary* x)override
-	{
-		x->_id.emit(this);
-	}
-
-	void emit(num_primary* x)override
-	{
-		_out << x->num;
-	}
-
 	void emit(func_invoke_primary* x)override
 	{
 		if (is_special_func(x->func_name))
@@ -355,210 +367,24 @@ public:
 			emit_special_func(x);
 			return;
 		}
-		_out << x->func_name;
-		_out << "(";
-		for (auto& a : x->args)
-			a->emit(this);
+		_out << x->func_name << "(";
+		if (x->args.size() == 1)
+		{
+			x->args[0]->emit(this);
+		}
+		else
+		{
+			int i = 0;
+			for (auto& a : x->args)
+			{
+				a->emit(this);
+				if (i != x->args.size() - 1)
+					_out << ", ";
+				i++;
+			}
+		}
 		_out << ")";
 	}
-
-	void emit(primary_term* x)override
-	{
-		x->p->emit(this);
-	}
-
-	void emit(expr_in_paren* x)override
-	{
-		_out << "(";
-		x->x->emit(this);
-		_out << ")";
-	}
-
-	void emit(mul_term* x)override
-	{
-		x->left->emit(this);
-		_out << " * ";
-		x->right->emit(this);
-	}
-
-	void emit(div_term* x)override
-	{
-		x->left->emit(this);
-		_out << " / ";
-		x->right->emit(this);
-	}
-
-	void emit(add_expr* x)override
-	{
-		x->left->emit(this);
-		_out << " + ";
-		x->right->emit(this);
-	}
-
-	void emit(sub_expr* x)override
-	{
-		x->left->emit(this);
-		_out << " - ";
-		x->right->emit(this);
-	}
-
-	void emit(true_bexpr* x)override
-	{
-		_out << "true";
-	}
-
-	void emit(false_bexpr* x)override
-	{
-		_out << "false";
-	}
-
-	void emit(binary_bexpr* x)override
-	{
-		x->left->emit(this);
-		switch (x->op)
-		{
-		case bool_op::and:
-			_out << " && ";
-			break;
-		case bool_op::or:
-			_out << " || ";
-			break;
-		case bool_op::equal:
-			_out << " == ";
-			break;
-		case bool_op::less:
-			_out << " != ";
-			break;
-		case bool_op::less_equal:
-			_out << " <= ";
-			break;
-		case bool_op::greater:
-			_out << " > ";
-			break;
-		case bool_op::greater_equal:
-			_out << " >= ";
-			break;
-		case bool_op::not_equal:
-			_out << " != ";
-			break;
-		}
-		x->right->emit(this);
-	}
-
-	void emit(not_bexpr* x)override
-	{
-		_out << "!";
-		x->xpr->emit(this);
-	}
-
-	void emit(multi_stmt* x)override
-	{
-		if (x->f == nullptr && x->s == nullptr) return;
-		if (x->f != nullptr);
-		{ x->f->emit(this);  }
-		_out << ";" << endl;
-		if (x->s != nullptr)
-		{
-			x->s->emit(this);
-		}
-	}
-
-	void emit(block_stmt* x)override
-	{
-		_out << "{" << endl;
-		x->s->emit(this);
-		_out << "}" << endl;
-	}
-
-	void emit(assign_stmt* x)override
-	{
-		if (x->op == assign_op::pre_incr)
-		{
-			_out << "++";
-			x->name.emit(this);
-			return;
-		}
-		else if (x->op == assign_op::pre_deincr)
-		{
-			_out << "--";
-			x->name.emit(this);
-			return;
-		}
-
-		x->name.emit(this);
-		switch (x->op)
-		{
-		case assign_op::equal:
-			_out << " = ";
-			break;
-		case assign_op::plus_equal:
-			_out << " += ";
-			break;
-		case assign_op::minus_equal:
-			_out << " -= ";
-			break;
-		case assign_op::mul_equal:
-			_out << " *= ";
-			break;
-		case assign_op::div_equal:
-			_out << " /= ";
-			break;
-
-		case assign_op::post_incr:
-			_out << "++";
-			return;
-		case assign_op::post_deincr:
-			_out << "--";
-			return;
-		}
-		if (x->xpr != nullptr)
-			x->xpr->emit(this);
-	}
-
-	void emit(decl_stmt* x)override
-	{
-		x->typ->emit(this);
-		_out << " " << x->name;
-		if (x->init_xpr != nullptr)
-		{
-			_out << " = ";
-			x->init_xpr->emit(this);
-		}
-	}
-
-	void emit(if_stmt* x)override
-	{
-		_out << "if(";
-		x->xpr->emit(this);
-		_out << ")";
-		x->body->emit(this);
-		if (x->else_body != nullptr)
-		{
-			_out << endl << "else ";
-			x->else_body->emit(this);
-		}
-	}
-
-	void emit(while_stmt* x)override
-	{
-		_out << "while(";
-		x->xpr->emit(this);
-		_out << ")";
-		x->body->emit(this);
-	}
-
-	void emit(for_stmt* x)override
-	{
-		_out << "for(";
-		x->init_stmt->emit(this);
-		_out << "; ";
-		x->cond->emit(this);
-		_out << "; ";
-		x->incr_stmt->emit(this);
-		_out << ")";
-		x->body->emit(this);
-	}
-
 	void emit(func_invoke_stmt* x)override
 	{
 		if (is_special_func(x->func_name))
@@ -566,24 +392,23 @@ public:
 			emit_special_func(x);
 			return;
 		}
-		_out << x->func_name;
-		_out << "(";
-		for (auto& a : x->args)
-			a->emit(this);
-		_out << ")";
-	}
-
-	void emit(return_stmt* x)override
-	{
-		if (x->rval != nullptr)
+		_out << x->func_name << "(";
+		if (x->args.size() == 1)
 		{
-			_out << "return ";
-			x->rval->emit(this);
+			x->args[0]->emit(this);
 		}
 		else
 		{
-			_out << "return";
+			int i = 0;
+			for (auto& a : x->args)
+			{
+				a->emit(this);
+				if (i != x->args.size() - 1)
+					_out << ", ";
+				i++;
+			}
 		}
+		_out << ")";
 	}
 
 	void emit(sfunction* x)override

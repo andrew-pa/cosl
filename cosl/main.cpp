@@ -4,10 +4,11 @@
 #include "parser.h"
 #include "code_emitter.h"
 #include "hlsl_code_emitter.h"
+#include "glsl_code_emitter.h"
 
 /*
 Usage (to generate HLSL):	-hlsl <in_file> <out_file>
-Usage (to generate GLSL):	-glsl -v 440 <in_file> <out_file>
+Usage (to generate GLSL):	-glsl 440 <in_file> <out_file>
 */
 
 int main(int argc, char* argv[])
@@ -20,10 +21,13 @@ int main(int argc, char* argv[])
 	{
 		infpath = args[1];
 		otfpath = args[2];
-		ce = new hlsl_code_emmiter();
+		ce = new hlsl_code_emitter();
 	}
 	else if(args[0] == "-glsl")
 	{
+		infpath = args[2];
+		otfpath = args[3];
+		ce = new glsl_code_emitter(args[1]);
 	}
 	ifstream infs(infpath);
 	string in_file;
@@ -37,7 +41,6 @@ int main(int argc, char* argv[])
 	auto shf = parse_shader(tkn);
 	ce->emit(shf);
 	ofstream ofs(otfpath);
-	cout << ce->out_string();
 	ofs.write(ce->out_string().c_str(), ce->out_string().size());
 	ofs.flush();
 	return 0;
