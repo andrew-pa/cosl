@@ -28,6 +28,7 @@ class glsl_code_emitter : public c_style_code_emitter
 				args[i]->emit(this);
 			}
 			_out << ")";
+			return;
 		}
 		if(name == "mul")
 		{
@@ -65,7 +66,7 @@ public:
 
 	void emit(shader_file* sh) override
 	{
-		_out << "#verson " << vs_str << " core" << endl;
+		_out << "#version " << vs_str << " core" << endl;
 		emit(sh->type);
 		sh->inpblk->emit(this);
 		sh->outblk->emit(this);
@@ -86,7 +87,7 @@ public:
 	{
 		if(x.sem != nullptr)
 		{
-			if(x.sem->name == "rs_position")
+			if(x.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
 			{
 				rspos = x.name;
 				return;
@@ -102,7 +103,17 @@ public:
 		int layout_idx = 0;
 		for(auto& d : x->db->decls)
 		{
-			_out << "layout(location = " << layout_idx << ") in ";
+			if (shmode != shader_type::pixel_shader)
+				_out << "layout(location = " << layout_idx << ") ";
+			else
+			{
+				if(d.sem != nullptr)
+				{
+					if (d.sem->name == "rs_position")
+						continue;
+				}
+			}
+			_out << "in ";
 			d.emit(this);
 			_out << ";" << endl;
 			layout_idx++;
@@ -118,6 +129,11 @@ public:
 				if(d.sem->name == "target")
 				{
 					_out << "layout(location = " << d.sem->idx << ") ";
+				}
+				if(d.sem->name == "rs_position")
+				{
+					d.emit(this);
+					continue;
 				}
 			}
 			_out << "out ";
@@ -175,6 +191,28 @@ public:
 				_out << "gl_Position";
 				return;
 			}
+			
+			int i = 0;
+			for (auto& n : x.members)
+			{
+				_out << n;
+				if (i != x.members.size() - 1)
+					_out << ".";
+				i++;
+			}
+			return;
+		}
+		if (x.base_name == "input")
+		{
+			int i = 0;
+			for (auto& n : x.members)
+			{
+				_out << n;
+				if (i != x.members.size() - 1)
+					_out << ".";
+				i++;
+			}
+			return;
 		}
 
 		_out << x.base_name;
