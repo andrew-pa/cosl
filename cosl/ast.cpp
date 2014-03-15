@@ -11,6 +11,7 @@ dea(texture_def)
 dea(id_primary)
 dea(num_primary)
 dea(func_invoke_primary)
+dea(member_access_primary)
 dea(mul_term)
 dea(div_term)
 dea(add_expr)
@@ -31,10 +32,6 @@ dea(return_stmt)
 dea(sfunction)
 dea(expr_in_paren)
 
-void id::emit(code_emitter* ce)
-{
-	ce->emit(*this);
-}
 void decl::emit(code_emitter* ce)
 {
 	ce->emit(*this);

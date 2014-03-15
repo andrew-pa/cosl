@@ -8,7 +8,7 @@ bool is_delimiter(char c, bool plain)
 {
 	return is_whitespace(c) || (c == ' ' || c == ';' || c == ',' ||
 		c == '(' || c == ')' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || (!plain ? (c == '"' || c == '\'') : false)
-		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}');
+		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}' || c == '.');
 }
 
 bool is_two_char_special_first(char c)
@@ -58,7 +58,7 @@ token tokenizer::next_token()
 		}
 
 		if (isdigit(s[idx]) ||
-			((s[idx] == '-')
+			((s[idx] == '-' || s[idx] == '.')
 			&& (idx + 1 < s.size() && is_numeric_body(s[idx + 1]))))
 		{
 			string d;

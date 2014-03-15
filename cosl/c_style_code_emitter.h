@@ -29,11 +29,6 @@ public:
 		_out << "}";
 	}
 
-	void emit(id_primary* x)override
-	{
-		x->_id.emit(this);
-	}
-
 	void emit(num_primary* x)override
 	{
 		_out << x->num;
@@ -131,7 +126,7 @@ public:
 	void emit(multi_stmt* x)override
 	{
 		if (x->f == nullptr && x->s == nullptr) return;
-		if (x->f != nullptr);
+		if (x->f != nullptr)
 		{ x->f->emit(this);  }
 		_out << ";" << endl;
 		if (x->s != nullptr)
@@ -152,17 +147,17 @@ public:
 		if (x->op == assign_op::pre_incr)
 		{
 			_out << "++";
-			x->name.emit(this);
+			x->name->emit(this);
 			return;
 		}
 		else if (x->op == assign_op::pre_deincr)
 		{
 			_out << "--";
-			x->name.emit(this);
+			x->name->emit(this);
 			return;
 		}
 
-		x->name.emit(this);
+		x->name->emit(this);
 		switch (x->op)
 		{
 		case assign_op::equal:

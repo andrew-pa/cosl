@@ -115,38 +115,15 @@ public:
 	void emit(code_emitter* ce) override;
 };
 
-struct id : public ast_node
-{
-	string base_name;
-	vector<string> members;
-	id(const string& s)
-		: base_name(), members()
-	{
-		vector<string> parts;
-		string nx = "";
-		for (int i = 0; i < s.size(); ++i)
-		{
-			if(s[i] == '.')
-			{
-				parts.push_back(nx);
-				nx = "";
-				continue;
-			}
-			nx += s[i];
-		}
-		if (!nx.empty()) parts.push_back(nx);
-		if(parts.size() == 0)
-		{
-			base_name = s;
-		}
-		else
-		{
-			base_name = parts[0];
-			members = vector<string>(parts.begin() + 1, parts.end());
-		}
-	}
-	void emit(code_emitter* ce) override;
-};
+//struct id : public ast_node
+//{
+//	string base_name;
+//	id(const string& s)
+//		: base_name(s)
+//	{
+//	}
+//	void emit(code_emitter* ce) override;
+//};
 
 #pragma region expr
 
@@ -167,9 +144,18 @@ struct primary : public term
 
 struct id_primary : public primary
 {
-	id _id;
-	id_primary(id _d)
-		: _id(_d) {}
+	string id_s;
+	id_primary(const string& _d)
+		: id_s(_d) {}
+	void emit(code_emitter* ce) override;
+};
+
+struct member_access_primary : public id_primary
+{
+	primary* val;
+	vector<string> members;
+	member_access_primary(primary* p, const vector<string>& m)
+		: val(p), members(m), id_primary("__invalid_member_access_primary"){}
 	void emit(code_emitter* ce) override;
 };
 
@@ -312,10 +298,10 @@ enum class assign_op
 
 struct assign_stmt : public stmt
 {
-	id name;
+	id_primary* name;
 	assign_op op;
 	expr* xpr;
-	assign_stmt(id nm, assign_op o, expr* x)
+	assign_stmt(id_primary* nm, assign_op o, expr* x)
 		: name(nm), op(o), xpr(x){}
 	void emit(code_emitter* ce) override;
 };

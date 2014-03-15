@@ -11,13 +11,13 @@ expr* parse_bool_expr(tokenizer& tk);
 s_type* parse_type(tokenizer& tk);
 
 stmt* parse_stmt(tokenizer& tk, bool allow_multi = true);
-stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt);
-stmt* parse_assign_stmt(tokenizer& tk);
-stmt* parse_assign_stmt(tokenizer& tk, string* already_parsed_id);
-stmt* parse_if_stmt(tokenizer& tk);
-stmt* parse_while_stmt(tokenizer& tk);
-stmt* parse_for_stmt(tokenizer& tk);
-stmt* parse_return_stmt(tokenizer& tk);
+//stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt);
+//stmt* parse_assign_stmt(tokenizer& tk);
+//stmt* parse_assign_stmt(tokenizer& tk, string* already_parsed_id);
+//stmt* parse_if_stmt(tokenizer& tk);
+//stmt* parse_while_stmt(tokenizer& tk);
+//stmt* parse_for_stmt(tokenizer& tk);
+//stmt* parse_return_stmt(tokenizer& tk);
 semantic* parse_semantic(tokenizer& tk);
 
 decl parse_decl(tokenizer& tk);

@@ -26,7 +26,8 @@
 
 <texture_def> := <texture1D_def> | <texture2D_def> | <texture3D_def> | <texture_cube_def>
 
-<id> := #ID ('.' #ID)+
+<id> := #ID 
+		| <primary> ('.' #ID)+
 
 <primary> := <id> | #NUM | '(' <expr> ')' 
 		   | #ID '(' (<expr> ',')+ ')' ;function invocation

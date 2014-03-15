@@ -12,6 +12,28 @@ primary* parse_primary(tokenizer& tk)
 			expr* x = parse_expr(tk);
 			t = tk.get_token();
 			if (t.s != ")") throw exception("expected )");
+			t = tk.get_token();
+			if(t.tp == token_type::special && t.s == ".")
+			{
+				vector<string> m;
+				while(true)
+				{
+					t = tk.get_token();
+					if (t.tp != token_type::id)
+						break;
+					m.push_back(t.s);
+					t = tk.get_token();
+					if (t.tp == token_type::special && t.s == ".")
+						continue;
+					else
+					{
+						tk.put_back(t);
+						break;
+					}
+				}
+				return new member_access_primary(new expr_in_paren(x), m);
+			}
+			tk.put_back(t);
 			return new expr_in_paren(x);
 		}
 	}
@@ -35,12 +57,57 @@ primary* parse_primary(tokenizer& tk)
 				args.push_back(parse_expr(tk));
 				t = tk.get_token();
 			}
+			t = tk.get_token();
+			if (t.tp == token_type::special && t.s == ".")
+			{
+				vector<string> m;
+				while (true)
+				{
+					t = tk.get_token();
+					if (t.tp != token_type::id)
+						break;
+					m.push_back(t.s);
+					t = tk.get_token();
+					if (t.tp == token_type::special && t.s == ".")
+						continue;
+					else
+					{
+						tk.put_back(t);
+						break;
+					}
+				}
+				return new member_access_primary(new func_invoke_primary(n, args), m);
+			}
+			tk.put_back(t);
 			return new func_invoke_primary(n, args);
 		}
 		else
 		{
 			tk.put_back(xt);
-			return new id_primary(id(t.s));
+			string tid = t.s;
+			t = tk.get_token();
+			if (t.tp == token_type::special && t.s == ".")
+			{
+				vector<string> m;
+				while (true)
+				{
+					t = tk.get_token();
+					if (t.tp != token_type::id)
+						break;
+					m.push_back(t.s);
+					t = tk.get_token();
+					if (t.tp == token_type::special && t.s == ".")
+						continue;
+					else
+					{
+						tk.put_back(t);
+						break;
+					}
+				}
+				return new member_access_primary(new id_primary(tid), m);
+			}
+			tk.put_back(t);
+			return new id_primary(tid);
 		}
 	}
 		break;
@@ -48,6 +115,36 @@ primary* parse_primary(tokenizer& tk)
 		return new num_primary(t.s);
 	}
 	return nullptr;
+}
+
+id_primary* parse_id(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw exception("expected ID");
+	string tid = t.s;
+	t = tk.get_token();
+	if (t.tp == token_type::special && t.s == ".")
+	{
+		vector<string> m;
+		while (true)
+		{
+			t = tk.get_token();
+			if (t.tp != token_type::id)
+				break;
+			m.push_back(t.s);
+			t = tk.get_token();
+			if (t.tp == token_type::special && t.s == ".")
+				continue;
+			else
+			{
+				tk.put_back(t);
+				break;
+			}
+		}
+		return new member_access_primary(new id_primary(tid), m);
+	}
+	tk.put_back(t);
+	return new id_primary(tid);
 }
 
 term* parse_term(tokenizer& tk)
@@ -262,17 +359,16 @@ stmt* parse_assign_stmt(tokenizer& tk)
 	{
 		if (t.s == "++")
 		{
-			t = tk.get_token();
-			return new assign_stmt(id(t.s), assign_op::pre_incr, nullptr);
+			return new assign_stmt(parse_id(tk), assign_op::pre_incr, nullptr);
 		}
 		else if (t.s == "--")
 		{
-			t = tk.get_token();
-			return new assign_stmt(id(t.s), assign_op::pre_deincr, nullptr);
+			return new assign_stmt(parse_id(tk), assign_op::pre_deincr, nullptr);
 		}
 	}
 	if (t.tp != token_type::id) throw exception("invalid assign stmt");
-	id ddd(t.s);
+	tk.put_back(t);
+	auto ddd = parse_id(tk);
 	t = tk.get_token();
 	if (t.s == "=")
 	{
@@ -312,49 +408,12 @@ stmt* parse_assign_stmt(tokenizer& tk)
 	{
 		throw exception("invalid assignment operator");
 	}
-	//return matchv<string, assign_stmt*>(t.s,
-	//{
-	//	{ "=", [&]
-	//	{
-	//		expr* x = parse_expr(tk);
-	//		return new assign_stmt(ddd, assign_op::equal, x);
-	//	} },
-	//	{ "+=", [&]
-	//	{
-	//		expr* x = parse_expr(tk);
-	//		return new assign_stmt(ddd, assign_op::plus_equal, x);
-	//	} },
-	//	{ "-=", [&]
-	//	{
-	//		expr* x = parse_expr(tk);
-	//		return new assign_stmt(ddd, assign_op::minus_equal, x);
-	//	} },
-	//	{ "*=", [&]
-	//	{
-	//		expr* x = parse_expr(tk);
-	//		return new assign_stmt(ddd, assign_op::mul_equal, x);
-	//	} },
-	//	{ "/=", [&]
-	//	{
-	//		expr* x = parse_expr(tk);
-	//		return new assign_stmt(ddd, assign_op::div_equal, x);
-	//	} },
-	//	{ "++", [&]
-	//	{
-	//		return new assign_stmt(ddd, assign_op::incr, nullptr);
-	//	} },
-	//	{ "--", [&]
-	//	{
-	//		return new assign_stmt(ddd, assign_op::deincr, nullptr);
-	//	} },
-
-	//}, [&] { throw exception("invalid assign stmt"); });
 }
 
-stmt* parse_assign_stmt(tokenizer& tk, string* already_parsed_id)
+stmt* parse_assign_stmt(tokenizer& tk, id_primary* already_parsed_id)
 {
 	auto t = tk.get_token();
-	id ddd(*already_parsed_id);
+	auto ddd = already_parsed_id;
 	if (t.s == "=")
 	{
 		expr* x = parse_expr(tk);
@@ -548,7 +607,27 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 				tk.put_back(t);
 				s_type* tp = parse_type(tk);
 				t = tk.get_token();
-				if (tp != nullptr) //decl stmt
+				if(t.tp == token_type::special && t.s == ".")
+				{
+					vector<string> m;
+					while (true)
+					{
+						t = tk.get_token();
+						if (t.tp != token_type::id)
+							break;
+						m.push_back(t.s);
+						t = tk.get_token();
+						if (t.tp == token_type::special && t.s == ".")
+							continue;
+						else
+							break;
+					}
+					member_access_primary* mp = new member_access_primary(new id_primary(*tp->udt_name), m);
+
+					tk.put_back(t);
+					s = parse_assign_stmt(tk, mp);
+				}
+				else if (tp != nullptr) //decl stmt
 				{
 					if (t.tp == token_type::special && t.s == "(")
 					{
@@ -580,7 +659,7 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 					{
 						//assign stmt w/ "udt" name as <id>
 						tk.put_back(t);
-						s = parse_assign_stmt(tk, tp->udt_name);
+						s = parse_assign_stmt(tk, new id_primary(*tp->udt_name));
 					}
 				}
 				else
@@ -592,7 +671,7 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 				}
 			}
 		}
-		else if (t.tp == token_type::special)
+		if (t.tp == token_type::special)
 		{
 			if (t.s == "++" || t.s == "--")
 			{

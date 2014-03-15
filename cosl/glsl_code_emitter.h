@@ -17,7 +17,7 @@ class glsl_code_emitter : public c_style_code_emitter
 	{
 		if(name == "sample_texture")
 		{
-			string txname = dynamic_cast<id_primary*>(args[0])->_id.base_name;
+			string txname = dynamic_cast<id_primary*>(args[0])->id_s;
 			_out << "texture(";
 			if (shmode == shader_type::vertex_shader) _out << "vs_";
 			else if (shmode == shader_type::pixel_shader) _out << "ps_";
@@ -36,9 +36,11 @@ class glsl_code_emitter : public c_style_code_emitter
 			{
 				throw exception("invalid number of arguments to mul");
 			}
+			_out << "(";
 			args[1]->emit(this);
 			_out << " * ";
 			args[0]->emit(this);
+			_out << ")";
 		}
 		else
 		{
@@ -107,10 +109,13 @@ public:
 				_out << "layout(location = " << layout_idx << ") ";
 			else
 			{
-				if(d.sem != nullptr)
+				if (d.sem != nullptr)
 				{
-					if (d.sem->name == "rs_position")
+					if (d.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
+					{
+						rspos = d.name;
 						continue;
+					}
 				}
 			}
 			_out << "in ";
@@ -130,9 +135,9 @@ public:
 				{
 					_out << "layout(location = " << d.sem->idx << ") ";
 				}
-				if(d.sem->name == "rs_position")
+				if (d.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
 				{
-					d.emit(this);
+					rspos = d.name;
 					continue;
 				}
 			}
@@ -175,51 +180,89 @@ public:
 		txaliases[x->name] = x->reg_idx;
 	}
 
-	void emit(const id& x) override
+	void emit(id_primary* x) override
 	{
-		if(txaliases.find(x.base_name) != txaliases.end())
+		if(txaliases.find(x->id_s) != txaliases.end())
 		{
 			if (shmode == shader_type::vertex_shader) _out << "vs_";
 			else if (shmode == shader_type::pixel_shader) _out << "ps_";
-			_out << "tex_" << txaliases[x.base_name];
+			_out << "tex_" << txaliases[x->id_s];
 			return;
 		}
-		if(x.base_name == "output")
+		//if(x.base_name == "output")
+		//{
+		//	if(!x.members.empty() && x.members[0] == rspos)
+		//	{
+		//		_out << "gl_Position";
+		//		return;
+		//	}
+		//	
+		//	int i = 0;
+		//	for (auto& n : x.members)
+		//	{
+		//		_out << n;
+		//		if (i != x.members.size() - 1)
+		//			_out << ".";
+		//		i++;
+		//	}
+		//	return;
+		//}
+		//if (x.base_name == "input")
+		//{
+		//	int i = 0;
+		//	for (auto& n : x.members)
+		//	{
+		//		_out << n;
+		//		if (i != x.members.size() - 1)
+		//			_out << ".";
+		//		i++;
+		//	}
+		//	return;
+		//}
+
+		_out << x->id_s;
+	}
+
+	void emit(member_access_primary* x) override
+	{
+		auto vaid = dynamic_cast<id_primary*>(x->val);
+		if(vaid != nullptr)
 		{
-			if(!x.members.empty() && x.members[0] == rspos)
+			if(vaid->id_s == "output")
 			{
-				_out << "gl_Position";
+				if(!x->members.empty() && x->members[0] == rspos)
+				{
+					_out << "gl_Position";
+					return;
+				}
+				
+				int i = 0;
+				for (auto& n : x->members)
+				{
+					_out << n;
+					if (i != x->members.size() - 1)
+						_out << ".";
+					i++;
+				}
 				return;
 			}
-			
-			int i = 0;
-			for (auto& n : x.members)
+			if (vaid->id_s == "input")
 			{
-				_out << n;
-				if (i != x.members.size() - 1)
-					_out << ".";
-				i++;
+				int i = 0;
+				for (auto& n : x->members)
+				{
+					_out << n;
+					if (i != x->members.size() - 1)
+						_out << ".";
+					i++;
+				}
+				return;
 			}
-			return;
 		}
-		if (x.base_name == "input")
-		{
-			int i = 0;
-			for (auto& n : x.members)
-			{
-				_out << n;
-				if (i != x.members.size() - 1)
-					_out << ".";
-				i++;
-			}
-			return;
-		}
-
-		_out << x.base_name;
-		for (auto& n : x.members)
-		{
-			_out << "." << n;
-		}
+		x->val->emit(this);
+		for (auto& m : x->members)
+			_out << "." << m;
+		
 	}
 
 	void emit(func_invoke_primary* x) override

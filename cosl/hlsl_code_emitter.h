@@ -157,7 +157,7 @@ class hlsl_code_emitter : public c_style_code_emitter
 		else if(t == special_func_type::sample)
 		{
 			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name;
+			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->id_s;
 			for (int i = 1; i < x->args.size(); ++i)
 			{
 				_out << ", ";
@@ -202,7 +202,7 @@ class hlsl_code_emitter : public c_style_code_emitter
 		else if (t == special_func_type::sample)
 		{
 			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->_id.base_name;
+			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->id_s;
 			for (int i = 1; i < x->args.size(); ++i)
 			{
 				_out << ", ";
@@ -351,13 +351,16 @@ public:
 		_out << endl << "SamplerState ___smp_" << x->name << " : register(s" << x->reg_idx << ");" << endl;
 	}
 
-	void emit(const id& x)override
+	void emit(id_primary* x)override
 	{
-		_out << x.base_name;
-		for (auto& n : x.members)
-		{
-			_out << "." << n;
-		}
+		_out << x->id_s;
+	}
+
+	void emit(member_access_primary* x) override
+	{
+		x->val->emit(this);
+		for (auto& m : x->members)
+			_out << "." << m;
 	}
 
 	void emit(func_invoke_primary* x)override
