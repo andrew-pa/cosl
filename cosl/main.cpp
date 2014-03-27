@@ -8,20 +8,32 @@
 
 /*
 Usage (to generate HLSL):	-hlsl <in_file> <out_file>
+Usage (to generate & compile HLSL):
+							-hlsl <in_file> <interm_file> -c <fxc_options including out file>
 Usage (to generate GLSL):	-glsl 440 <in_file> <out_file>
 */
 
 int main(int argc, char* argv[])
 {
+	try
+	{
 	vector<string> args;
 	for (int i = 1; i < argc; ++i) args.push_back(string(argv[i]));
 	string infpath, otfpath;
+	bool invoke_compiler = false;
 	code_emitter* ce = nullptr;
 	if(args[0] == "-hlsl")
 	{
 		infpath = args[1];
 		otfpath = args[2];
 		ce = new hlsl_code_emitter();
+		if(args.size() > 3)
+		{
+			if(args[3] == "-c")
+			{
+				invoke_compiler = true;
+			}
+		}
 	}
 	else if(args[0] == "-glsl")
 	{
@@ -43,6 +55,26 @@ int main(int argc, char* argv[])
 	ofstream ofs(otfpath);
 	ofs.write(ce->out_string().c_str(), ce->out_string().size());
 	ofs.flush();
+	ofs.close();
+
+#ifdef _WIN32
+	if(invoke_compiler) //ONLY for HLSL
+	{
+		ostringstream oss;
+		oss << "fxc ";
+		for (int i = 4; i < args.size(); ++i) oss << args[i] << " ";
+		oss << otfpath;
+		//cout << "cmdline: " << oss.str() << endl;
+		return system(oss.str().c_str());
+	}
+#endif
+	}
+	catch(std::exception& e)
+	{
+		cout << "error: " << e.what() << endl;
+		throw e;
+	}
+
 	return 0;
 }
 

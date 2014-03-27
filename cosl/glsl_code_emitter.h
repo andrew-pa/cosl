@@ -281,9 +281,13 @@ public:
 		_out << " ";
 		_out << x->name;
 		_out << "(";
+		bool first = true;
 		for (auto& ag : x->args)
 		{
-			_out << ",";
+			if (!first) 
+			{
+				_out << ","; first = false; 
+			}
 			ag.typ->emit(this);
 			_out << " " << ag.nmn;
 		}

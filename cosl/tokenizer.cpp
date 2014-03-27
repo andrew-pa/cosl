@@ -35,6 +35,8 @@ token tokenizer::next_token()
 	{
 		if (is_whitespace(s[idx]))
 		{
+			if (s[idx] == '\n')
+				current_line++;
 			continue;
 		}
 
@@ -44,6 +46,7 @@ token tokenizer::next_token()
 			{
 				idx++;
 			}
+			current_line++;
 			continue;
 		}
 		if (s[idx] == '/' && idx + 1 < s.size() && s[idx + 1] == '*')
@@ -52,6 +55,8 @@ token tokenizer::next_token()
 			while (s[idx] != '*' && idx+1 < s.size() && s[idx+1] != '/')
 			{
 				idx++;
+				if (s[idx] == '\n')
+					current_line++;
 			}
 			idx++;
 			continue;
@@ -64,39 +69,39 @@ token tokenizer::next_token()
 			string d;
 			d += s[idx];
 			idx++;
-			if (idx == s.size()) return num_token(d);
+			if (idx == s.size()) return num_token(d, current_line);
 
 			while (is_numeric_body(s[idx]))
 			{
 				d += s[idx];
 				idx++;
-				if (idx == s.size()) return num_token(d);
+				if (idx == s.size()) return num_token(d, current_line);
 			}
-			return num_token(d);
+			return num_token(d, current_line);
 		}
 		if (is_delimiter(s[idx], true))
 		{
 			if(idx + 1 < s.size() && is_two_char_special_first(s[idx]) && is_two_char_special_second(s[idx+1]))
 			{
-				auto st = special_token(s[idx], s[idx+1]);
+				auto st = special_token(s[idx], s[idx + 1], current_line);
 				idx += 2;
 				return st;
 			}
-			return special_token(s[idx++]);
+			return special_token(s[idx++], current_line);
 		}
 		if (s[idx] == '"' || s[idx] == '\'')
 		{
 			idx++; //consume opening "
-			if (idx == s.size()) return end_token();
+			if (idx == s.size()) return end_token(current_line);
 			string d;
 			while (s[idx] != '"' && s[idx] != '\'')
 			{
 				d += s[idx];
 				idx++;
-				if (idx == s.size()) return end_token();
+				if (idx == s.size()) return end_token(current_line);
 			}
 			idx++;
-			return string_token(d);
+			return string_token(d, current_line);
 		}
 
 		else
@@ -109,9 +114,9 @@ token tokenizer::next_token()
 				idx++;
 				if (idx >= s.size()) {hit_end = true; break;}
 			}
-			if (d.empty()&&hit_end) return end_token();
-			return id_token(d);
+			if (d.empty() && hit_end) return end_token(current_line);
+			return id_token(d, current_line);
 		}
 	}
-	return end_token();
+	return end_token(current_line);
 }

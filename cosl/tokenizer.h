@@ -11,9 +11,10 @@ struct token
 {
 	token_type tp;
 	string s;
+	int source_line;
 	token(){}
-	token(token_type tp_, const string& s_)
-		: tp(tp_), s(s_){}
+	token(token_type tp_, const string& s_, int l = -1)
+		: tp(tp_), s(s_), source_line(l) {}
 
 	void print(ostream& ss)
 	{
@@ -42,26 +43,25 @@ struct token
 
 struct num_token : public token
 {
-	num_token(const string& d) : token(token_type::number_lit, d) {}
+	num_token(const string& d, int l = -1) : token(token_type::number_lit, d, l) {}
 };
 struct string_token : public token
 {
-	string_token(const string& d) : token(token_type::string_lit, d) {}
+	string_token(const string& d, int l = -1) : token(token_type::string_lit, d, l) {}
 };
 struct id_token : public token
 {
-	id_token(const string& d) : token(token_type::id, d) {}
+	id_token(const string& d, int l = -1) : token(token_type::id, d, l) {}
 };
 struct special_token : public token
 {
-	special_token(char d) : token(token_type::special, string() + d) {}
-	special_token(char da, char db) : token(token_type::special, (string() + da) + (string() + db)) {} //nasty hack
+	special_token(char d, int l = -1) : token(token_type::special, string() + d, l) {}
+	special_token(char da, char db, int l = -1) : token(token_type::special, (string() + da) + (string() + db), l) {} //nasty hack
 };
 struct end_token : public token
 {
-	end_token() : token(token_type::end, string("end")) {}
+	end_token(int l = -1) : token(token_type::end, string("end"), l) {}
 };
-
 
 #ifdef DEBUG_AT_LINE
 #define get_token() _get_token(__LINE__, __FILE__)
@@ -75,9 +75,11 @@ class tokenizer
 	bool full;
 
 	token next_token();
+
+	int current_line;
 public:
 	tokenizer(const string& s_)
-		: s(s_), full(false), idx(0)
+		: s(s_), full(false), idx(0), current_line(1)
 	{ }
 
 #ifdef DEBUG_AT_LINE

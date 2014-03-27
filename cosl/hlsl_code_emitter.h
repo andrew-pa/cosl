@@ -78,6 +78,8 @@ class hlsl_code_emitter : public c_style_code_emitter
 			}
 		}
 		if (n == "sample_texture") return true;
+		if (n == "fract") return true;
+		if (n == "mix") return true;
 		return false;
 	}
 	bool is_special_func(const string& n, special_func_type& t, string& base_type, uint& vecd, uint& matd)
@@ -118,6 +120,9 @@ class hlsl_code_emitter : public c_style_code_emitter
 		}
 		t = special_func_type::sample;
 		if (n == "sample_texture") return true;
+		t = special_func_type::math;
+		if (n == "fract") return true;
+		if (n == "mix") return true;
 		t = special_func_type::none;
 		return false;
 	}
@@ -164,6 +169,49 @@ class hlsl_code_emitter : public c_style_code_emitter
 				x->args[i]->emit(this);
 			}
 			_out << ")";
+		}
+		else if(t == special_func_type::math)
+		{
+			if(x->func_name == "fract")
+			{
+				_out << "frac(";
+				if (x->args.size() == 1)
+				{
+					x->args[0]->emit(this);
+				}
+				else
+				{
+					int i = 0;
+					for (auto& a : x->args)
+					{
+						a->emit(this);
+						if (i != x->args.size() - 1)
+							_out << ", ";
+						i++;
+					}
+				}
+				_out << ")";
+			}
+			else if (x->func_name == "mix")
+			{
+				_out << "lerp(";
+				if (x->args.size() == 1)
+				{
+					x->args[0]->emit(this);
+				}
+				else
+				{
+					int i = 0;
+					for (auto& a : x->args)
+					{
+						a->emit(this);
+						if (i != x->args.size() - 1)
+							_out << ", ";
+						i++;
+					}
+				}
+				_out << ")";
+			}
 		}
 	}
 
@@ -422,9 +470,14 @@ public:
 			_out << " ";
 			_out << x->name;
 			_out << "(__shader_input_t input";
+			bool first = true;
 			for (auto& ag : x->args)
 			{
-				_out << ",";
+				if(!first)
+				{
+					_out << ",";
+					first = false;
+				}
 				ag.typ->emit(this);
 				_out << " " << ag.nmn;
 			}
@@ -441,9 +494,14 @@ public:
 			_out << " ";
 			_out << x->name;
 			_out << "(";
+			bool first = true;
 			for (auto& ag : x->args)
 			{
-				_out << ",";
+				if (!first)
+				{
+					_out << ",";
+					first = false;
+				}
 				ag.typ->emit(this);
 				_out << " " << ag.nmn;
 			}

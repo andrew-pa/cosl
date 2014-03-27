@@ -673,13 +673,14 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 		}
 		if (t.tp == token_type::special)
 		{
-			if (t.s == "++" || t.s == "--")
-			{
-				//assign stmt
-				tk.put_back(t);
-				s = parse_assign_stmt(tk);
-			}
-			else if (t.s == ";" && allow_multi)
+			//if (t.s == "++" || t.s == "--")
+			//{
+			//	//assign stmt
+			//	tk.put_back(t);
+			//	s = parse_assign_stmt(tk);
+			//}
+			//else 
+			if (t.s == ";" && allow_multi)
 			{
 				s = new multi_stmt(s, parse_stmt(tk));
 			}
@@ -689,7 +690,7 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 				t = tk.get_token();
 				if (t.s != "}") throw exception("missing closing }");
 				//stmt* nx = parse_stmt(tk);
-				s = new block_stmt(ns);
+				return new block_stmt(ns);
 			}
 		}
 		if (!allow_multi) return s;
@@ -824,6 +825,7 @@ sfunction* parse_function_def(tokenizer& tk)
 	t = tk.get_token();
 	if (t.tp != token_type::special && t.s != ")")
 	{
+		tk.put_back(t);
 		while (!(t.tp == token_type::special && t.s == ")"))
 		{
 			if (t.s == ",")
