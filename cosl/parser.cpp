@@ -11,7 +11,7 @@ primary* parse_primary(tokenizer& tk)
 		{
 			expr* x = parse_expr(tk);
 			t = tk.get_token();
-			if (t.s != ")") throw exception("expected )");
+			if (t.s != ")") throw parser_exception(t, "expected )");
 			t = tk.get_token();
 			if(t.tp == token_type::special && t.s == ".")
 			{
@@ -120,7 +120,7 @@ primary* parse_primary(tokenizer& tk)
 id_primary* parse_id(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("expected ID");
+	if (t.tp != token_type::id) throw parser_exception(t, "expected ID");
 	string tid = t.s;
 	t = tk.get_token();
 	if (t.tp == token_type::special && t.s == ".")
@@ -222,7 +222,7 @@ expr* parse_bool_expr(tokenizer& tk)
 		else if (t.s == "!=") o = bool_op::not_equal;
 		else if (t.s == "&&") o = bool_op::and;
 		else if (t.s == "||") o = bool_op::or;
-		else throw exception("invalid bool operator");
+		else throw parser_exception(t, "invalid bool operator");
 		/*bool_op o = matchv<string, bool_op>(t.s,
 		{
 		{ "<",  [&] { return bool_op::less;			 } },
@@ -337,7 +337,7 @@ s_type* parse_type(tokenizer& tk)
 stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt)
 {
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid decl stmt");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid decl stmt");
 	string idn = t.s;
 	t = tk.get_token();
 	if (t.tp == token_type::special && t.s == "=")
@@ -366,7 +366,7 @@ stmt* parse_assign_stmt(tokenizer& tk)
 			return new assign_stmt(parse_id(tk), assign_op::pre_deincr, nullptr);
 		}
 	}
-	if (t.tp != token_type::id) throw exception("invalid assign stmt");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid assign stmt");
 	tk.put_back(t);
 	auto ddd = parse_id(tk);
 	t = tk.get_token();
@@ -406,7 +406,7 @@ stmt* parse_assign_stmt(tokenizer& tk)
 	}
 	else
 	{
-		throw exception("invalid assignment operator");
+		throw parser_exception(t, "invalid assignment operator");
 	}
 }
 
@@ -448,7 +448,7 @@ stmt* parse_assign_stmt(tokenizer& tk, id_primary* already_parsed_id)
 	}
 	else
 	{
-		throw exception("invalid assignment operator");
+		throw parser_exception(t, "invalid assignment operator");
 	}
 	//return matchv<string, stmt*>(t.s,
 	//{
@@ -486,16 +486,16 @@ stmt* parse_assign_stmt(tokenizer& tk, id_primary* already_parsed_id)
 	//		return new assign_stmt(ddd, assign_op::deincr, nullptr);
 	//	} },
 
-	//}, [&] { throw exception("invalid assign stmt"); });
+	//}, [&] { throw parser_exception(t, "invalid assign stmt"); });
 }
 
 stmt* parse_if_stmt(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	if (t.tp != token_type::special && t.s != "(") throw exception("invalid if stmt"); //eat opening (
+	if (t.tp != token_type::special && t.s != "(") throw parser_exception(t, "invalid if stmt"); //eat opening (
 	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != ")") throw exception("invalid if stmt"); //eat closing )
+	if (t.tp != token_type::special && t.s != ")") throw parser_exception(t, "invalid if stmt"); //eat closing )
 	stmt* st = parse_stmt(tk, false);
 	t = tk.get_token();
 	if (t.tp == token_type::id && t.s == "else")
@@ -511,11 +511,11 @@ stmt* parse_while_stmt(tokenizer& tk)
 {
 	auto t = tk.get_token();
 	if (t.tp != token_type::special && t.s != "(")
-		throw exception("invalid while stmt"); //eat opening (
+		throw parser_exception(t, "invalid while stmt"); //eat opening (
 	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
 	t = tk.get_token();
 	if (t.tp != token_type::special && t.s != ")")
-		throw exception("invalid while stmt"); //eat closing (
+		throw parser_exception(t, "invalid while stmt"); //eat closing (
 	stmt* st = parse_stmt(tk, false);
 	return new while_stmt(cond, st);
 }
@@ -524,25 +524,25 @@ stmt* parse_for_stmt(tokenizer& tk)
 {
 	auto t = tk.get_token();
 	if (t.tp != token_type::special && t.s != "(")
-		throw exception("invalid for stmt"); //eat opening (
+		throw parser_exception(t, "invalid for stmt"); //eat opening (
 
 	stmt* is = parse_stmt(tk, false);
 
 	t = tk.get_token();
 	if (t.tp != token_type::special && t.s != ";")
-		throw exception("invalid for stmt"); //eat ;
+		throw parser_exception(t, "invalid for stmt"); //eat ;
 
 	bool_expr* cond = dynamic_cast<bool_expr*>(parse_bool_expr(tk));
 
 	t = tk.get_token();
 	if (t.tp != token_type::special && t.s != ";")
-		throw exception("invalid for stmt"); //eat ;
+		throw parser_exception(t, "invalid for stmt"); //eat ;
 
 	stmt* incrs = parse_stmt(tk, false);
 
 	t = tk.get_token();
 	if (t.tp != token_type::special && t.s != ")")
-		throw exception("invalid for stmt"); //eat closing (
+		throw parser_exception(t, "invalid for stmt"); //eat closing (
 
 	stmt* b = parse_stmt(tk);
 
@@ -688,20 +688,20 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 			{
 				stmt* ns = parse_stmt(tk);
 				t = tk.get_token();
-				if (t.s != "}") throw exception("missing closing }");
+				if (t.s != "}") throw parser_exception(t, "missing closing }");
 				//stmt* nx = parse_stmt(tk);
 				return new block_stmt(ns);
 			}
 		}
 		if (!allow_multi) return s;
 	}
-	throw exception("invalid stmt");
+	throw parser_exception(t, "invalid stmt");
 }
 
 semantic* parse_semantic(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid semantic");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid semantic");
 	string n = t.s;
 	int i = 0;
 	string nm;
@@ -715,7 +715,7 @@ decl parse_decl(tokenizer& tk)
 	s_type* tp = parse_type(tk);
 	if (tp == nullptr) throw exception("invalid type");
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid decl");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid decl");
 	string nm = t.s;
 	t = tk.get_token();
 	if (t.s != ":")
@@ -730,7 +730,7 @@ decl_block* parse_decl_block(tokenizer& tk)
 {
 	auto t = tk.get_token();
 	if (!(t.tp == token_type::special && t.s == "{"))
-		throw exception("decl block missing opening {");
+		throw parser_exception(t, "decl block missing opening {");
 
 	vector<decl> dcl;
 
@@ -766,14 +766,14 @@ output_block* parse_output_block(tokenizer& tk)
 cbuffer_block* parse_cbuffer_block(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	/*if (t.s != "cbuffer") throw exception("invalid cbuffer block");*/
+	/*if (t.s != "cbuffer") throw parser_exception(t, "invalid cbuffer block");*/
 	//t = tk.get_token();
-	if (t.s != "(") throw exception("invalid cbuffer block");
+	if (t.s != "(") throw parser_exception(t, "invalid cbuffer block");
 	t = tk.get_token();
-	if (t.tp != token_type::number_lit) throw exception("invalid cbuffer block");
+	if (t.tp != token_type::number_lit) throw parser_exception(t, "invalid cbuffer block");
 	uint idx = atoi(t.s.c_str());
 	t = tk.get_token();
-	if (t.s != ")") throw exception("invalid cbuffer block");
+	if (t.s != ")") throw parser_exception(t, "invalid cbuffer block");
 	decl_block* dcl = parse_decl_block(tk);
 	return new cbuffer_block(idx, dcl);
 }
@@ -781,7 +781,7 @@ cbuffer_block* parse_cbuffer_block(tokenizer& tk)
 texture_def* parse_texture_def(tokenizer& tk)
 {
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid texture def");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid texture def");
 	texture_type txtp;
 	if (t.s == "texture1D") txtp = texture_type::texture1D;
 	if (t.s == "texture2D") txtp = texture_type::texture2D;
@@ -795,18 +795,18 @@ texture_def* parse_texture_def(tokenizer& tk)
 		{ "textureCube", [&] { return texture_type::textureCube; } },
 	}, (texture_type)-1);*/
 	t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid texture def");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid texture def");
 	string nm = t.s;
 
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != "(") throw exception("invalid texture def: missing opening (");
+	if (t.tp != token_type::special && t.s != "(") throw parser_exception(t, "invalid texture def: missing opening (");
 
 	t = tk.get_token();
-	if (t.tp != token_type::number_lit) throw exception("invalid texture def: invalid idx");
+	if (t.tp != token_type::number_lit) throw parser_exception(t, "invalid texture def: invalid idx");
 	uint ix = atoi(t.s.c_str());
 
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != ")") throw exception("invalid texture def: missing closing )");
+	if (t.tp != token_type::special && t.s != ")") throw parser_exception(t, "invalid texture def: missing closing )");
 
 	return new texture_def(txtp, nm, ix);
 }
@@ -815,10 +815,10 @@ sfunction* parse_function_def(tokenizer& tk)
 {
 	s_type* tp = parse_type(tk);
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("invalid function def");
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid function def");
 	string name = t.s;
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != "(") throw exception("invalid function def");
+	if (t.tp != token_type::special && t.s != "(") throw parser_exception(t, "invalid function def");
 
 	vector<sfunction::func_arg> args;
 
@@ -836,19 +836,19 @@ sfunction* parse_function_def(tokenizer& tk)
 
 			s_type* at = parse_type(tk);
 			t = tk.get_token();
-			if (t.tp != token_type::id) throw exception("invalid function arg");
+			if (t.tp != token_type::id) throw parser_exception(t, "invalid function arg");
 			args.push_back(sfunction::func_arg(at, t.s));
 			t = tk.get_token();
 		}
 	}
 
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != "{") throw exception("invalid function def");
+	if (t.tp != token_type::special && t.s != "{") throw parser_exception(t, "invalid function def");
 
 	auto st = parse_stmt(tk);
 
 	t = tk.get_token();
-	if (t.tp != token_type::special && t.s != "}") throw exception("invalid function def");
+	if (t.tp != token_type::special && t.s != "}") throw parser_exception(t, "invalid function def");
 
 	return new sfunction(tp, name, args, st);
 }
@@ -857,10 +857,10 @@ shader_file* parse_shader(tokenizer& tk)
 {
 	shader_file* sf = new shader_file;
 	auto t = tk.get_token();
-	if (t.tp != token_type::id) throw exception("shader type decl missing");
+	if (t.tp != token_type::id) throw parser_exception(t, "shader type decl missing");
 	if (t.s == "$vertex_shader") sf->type = shader_type::vertex_shader;
 	else if (t.s == "$pixel_shader") sf->type = shader_type::pixel_shader;
-	else throw exception("invalid shader type");
+	else throw parser_exception(t, "invalid shader type");
 
 	while (t.tp != token_type::end)
 	{
@@ -898,7 +898,7 @@ shader_file* parse_shader(tokenizer& tk)
 		if (t.tp == token_type::end) break;
 		else
 		{
-			throw exception("invalid file decl");
+			throw parser_exception(t, "invalid file decl");
 		}
 	}
 	return sf;

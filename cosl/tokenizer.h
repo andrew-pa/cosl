@@ -16,24 +16,24 @@ struct token
 	token(token_type tp_, const string& s_, int l = -1)
 		: tp(tp_), s(s_), source_line(l) {}
 
-	void print(ostream& ss)
+	void print(ostream& ss) const
 	{
 		switch (tp)
 		{
 		case token_type::id:
-			ss << "id [" << s << "]";
+			ss << "id [" << s << " : ln#" << source_line << "]";
 			break;
 		case token_type::string_lit:
-			ss << "str[" << s << "]";
+			ss << "str[" << s << " : ln#" << source_line << "]";
 			break;
 		case token_type::number_lit:
-			ss << "num[" << s << "]";
+			ss << "num[" << s << " : ln#" << source_line << "]";
 			break;
 		case token_type::special:
-			ss << "spc[" << s << "]";
+			ss << "spc[" << s << " : ln#" << source_line << "]";
 			break;
 		case token_type::end:
-			ss << "end";
+			ss << "end" << " : ln#" << source_line;
 			break;
 		default:
 			throw;

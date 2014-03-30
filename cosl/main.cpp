@@ -5,6 +5,7 @@
 #include "code_emitter.h"
 #include "hlsl_code_emitter.h"
 #include "glsl_code_emitter.h"
+#include <set>
 
 /*
 Usage (to generate HLSL):	-hlsl <in_file> <out_file>
@@ -13,12 +14,177 @@ Usage (to generate & compile HLSL):
 Usage (to generate GLSL):	-glsl 440 <in_file> <out_file>
 */
 
+enum class shader_target_language
+{
+	HLSL, GLSL
+};
+
+set<string> defines;
+vector<string> incl_paths;
+set<string> incls;
+
+struct stream_bad_or_fail_exception : public exception 
+{
+};
+
+string read_file_and_preprocess(const string& infpath)
+{
+	ifstream infs(infpath);
+	if (infs.bad() || infs.fail())
+		throw stream_bad_or_fail_exception();
+	string in_file;
+	string s;
+	while (!infs.eof())
+	{
+		getline(infs, s);
+		if (s[0] == '#')
+		{
+			istringstream iss(s);
+			string cmd;
+			iss >> cmd;
+			if (cmd == "#ifdef")
+			{
+				string d;
+				iss >> d;
+				if (defines.find(d) == defines.end())
+				{
+					while (!infs.eof() && s != "#endif")
+						getline(infs, s);
+					continue;
+				}
+			}
+			if (cmd == "#define")
+			{
+				string d;
+				iss >> d;
+				defines.insert(d);
+			}
+			if (cmd == "#undef")
+			{
+				string d;
+				iss >> d;
+				defines.erase(d);
+			}
+			if (cmd == "#endif") continue;
+
+			if(cmd == "#include") 
+			{
+				string f;
+				iss >> f;
+				f = f.substr(1, f.size() - 1); //remove < >
+				if(incls.find(f) == incls.end())
+				{
+					string incl_txt;
+					for(const auto& inp : incl_paths)
+					{
+						try
+						{
+							incl_txt = read_file_and_preprocess(inp);
+							break;
+						}
+						catch(const stream_bad_or_fail_exception& ex)
+						{
+							continue;
+						}
+					}
+					in_file += "//begin header: " + f + "\n";
+					in_file += incl_txt + "\n\n";
+					in_file += "//end header: " + f + "\n";
+				}
+			}
+		}
+		in_file += s + "\n";
+	}
+}
+
 int main(int argc, char* argv[])
+{
+	vector<string> args;
+	for (int i = 1; i < argc; ++i) args.push_back(string(argv[i]));
+
+	shader_target_language target_lang;
+	string in_file_path, out_file_path;
+	string hlsl__fxc_options; bool hlsl__use_fxc;
+	uint glsl__version_number;
+	
+	code_emitter* ce = nullptr;
+
+	for (int i = 0; i < args.size(); ++i)
+	{
+		string arg = args[i];
+		if(arg == "-hlsl")
+		{
+			i++;
+			target_lang = shader_target_language::HLSL;
+			in_file_path = args[i++];
+			out_file_path = args[i++];
+			if (i + 1 < args.size() && args[i + 1] == "-c")
+			{
+				i++;
+				hlsl__use_fxc = true;
+				hlsl__fxc_options = args[i++];
+			}
+			defines.insert("HLSL");
+			ce = new hlsl_code_emitter;
+		}
+		else if (arg == "-glsl")
+		{
+			i++;
+			target_lang = shader_target_language::GLSL;
+			ce = new glsl_code_emitter(args[i++]);
+			in_file_path = args[i++];
+			out_file_path = args[i++];
+			defines.insert("GLSL");
+		}
+
+		if(arg == "-I")
+		{
+			i++;
+			incl_paths.push_back(args[i++]);
+		}
+	}
+
+	try
+	{
+		string in_file = read_file_and_preprocess(in_file_path);
+
+		tokenizer tkn(in_file);
+		auto shf = parse_shader(tkn);
+		ce->emit(shf);
+		ofstream ofs(out_file_path);
+		ofs.write(ce->out_string().c_str(), ce->out_string().size());
+		ofs.flush();
+		ofs.close();
+
+		if (target_lang == shader_target_language::HLSL && hlsl__use_fxc) //ONLY for HLSL
+		{
+			ostringstream oss;
+			oss << "fxc ";
+			for (int i = 4; i < args.size(); ++i) oss << args[i] << " ";
+			oss << otfpath;
+			//cout << "cmdline: " << oss.str() << endl;
+			return system(oss.str().c_str());
+		}
+	}
+	catch(const exception& ex)
+	{
+		cout << "error: " << ex.what() << endl;
+#ifdef _DEBUG
+		throw ex;
+#endif
+		return -1;
+	}
+}
+
+
+int old_main(int argc, char* argv[])
 {
 	try
 	{
 	vector<string> args;
 	for (int i = 1; i < argc; ++i) args.push_back(string(argv[i]));
+	set<string> defines;
+	set<string> incls;
 	string infpath, otfpath;
 	bool invoke_compiler = false;
 	code_emitter* ce = nullptr;
@@ -34,12 +200,14 @@ int main(int argc, char* argv[])
 				invoke_compiler = true;
 			}
 		}
+		defines.insert("HLSL");
 	}
 	else if(args[0] == "-glsl")
 	{
 		infpath = args[2];
 		otfpath = args[3];
 		ce = new glsl_code_emitter(args[1]);
+		defines.insert("GLSL");
 	}
 	ifstream infs(infpath);
 	string in_file;
@@ -47,6 +215,36 @@ int main(int argc, char* argv[])
 	while (!infs.eof())
 	{
 		getline(infs, s);
+		if(s[0] == '#')
+		{
+			istringstream iss(s);
+			string cmd;
+			iss >> cmd;
+			if(cmd == "#ifdef")
+			{
+				string d;
+				iss >> d;
+				if (defines.find(d) == defines.end())
+				{
+					while (!infs.eof() && s != "#endif")
+						getline(infs, s);
+					continue;
+				}
+			}
+			if(cmd == "#define")
+			{
+				string d;
+				iss >> d;
+				defines.insert(d);
+			}
+			if(cmd == "#undef")
+			{
+				string d;
+				iss >> d;
+				defines.erase(d);
+			}
+			if (cmd == "#endif") continue;
+		}
 		in_file += s + "\n";
 	}
 	tokenizer tkn(in_file);
@@ -72,7 +270,10 @@ int main(int argc, char* argv[])
 	catch(std::exception& e)
 	{
 		cout << "error: " << e.what() << endl;
+#ifdef _DEBUG
 		throw e;
+#endif
+		return -1;
 	}
 
 	return 0;

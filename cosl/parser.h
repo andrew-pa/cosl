@@ -3,6 +3,27 @@
 #include "tokenizer.h"
 #include "ast.h"
 
+struct parser_exception : public exception
+{
+	token tkat;
+
+	parser_exception(token t, const string& m)
+		: exception(m.c_str()), tkat(t)
+	{
+	}
+
+	const char* what() const override
+	{
+		ostringstream oss;
+		oss << exception::what();
+		oss << " @ token ";
+		tkat.print(oss);
+		char* c = new char[oss.str().size()];
+		strcpy(c, oss.str().c_str());
+		return c;
+	}
+};
+
 expr* parse_expr(tokenizer& tk);
 primary* parse_primary(tokenizer& tk);
 term* parse_term(tokenizer& tk);
