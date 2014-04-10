@@ -10,6 +10,7 @@
 			| 'bvec'[2-4] | 'ivec'[2-4] | 'uvec'[2-4] | 'vec'[2-4] | 'dvec'[2-4]
 			| 'mat'[2-4]'x'[[2-4]*] | 'dmat'[2-4]['x'[2-4]*]
 			| #ID ;struct name
+			| <typename>'['(#NUM ',')+']' ;array
 <semantic> := 'rs_position' | 'target'#NUM(int)	| depth#NUM(int)
 
 <decl_block> := '{' (<typename> #ID [':' <semantic>] ;)+ '}'
@@ -31,6 +32,7 @@
 
 <primary> := <id> | #NUM | '(' <expr> ')' 
 		   | #ID '(' (<expr> ',')+ ')' ;function invocation
+		   | <expr>'['(<expr> ',')+']'
 
 
 <bool_primary> := <id> | #NUM | '(' <bool_expr> ')' 

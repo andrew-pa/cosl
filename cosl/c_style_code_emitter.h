@@ -191,6 +191,15 @@ public:
 	{
 		x->typ->emit(this);
 		_out << " " << x->name;
+		if (x->typ->array_dims.size() > 0)
+		{
+			for (uint d : x->typ->array_dims)
+			{
+				_out << "[";
+				_out << d;
+				_out << "]";
+			}
+		}
 		if (x->init_xpr != nullptr)
 		{
 			_out << " = ";

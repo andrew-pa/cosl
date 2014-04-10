@@ -291,12 +291,24 @@ s_type* parse_type(tokenizer& tk)
 {
 	auto t = tk.get_token();
 	if (t.tp != token_type::id) return nullptr;
-	if (t.s == "bool") return new s_type(base_s_type::bool_t);
-	else if (t.s == "int") return new s_type(base_s_type::int_t);
-	else if (t.s == "uint") return new s_type(base_s_type::uint_t);
-	else if (t.s == "float") return new s_type(base_s_type::float_t);
-	else if (t.s == "double") return new s_type(base_s_type::double_t);
-	else if (t.s == "void") return new s_type(base_s_type::void_t);
+	auto at = tk.get_token();
+	vector<uint> ad(0);
+	if(at.tp == token_type::special && at.s == "[")
+	{
+		while(at.s != "]")
+		{
+			at = tk.get_token();
+			if (at.tp == token_type::number_lit)
+				ad.push_back(atoi(at.s.c_str()));
+		}
+	}
+	else tk.put_back(at);
+	if (t.s == "bool") return new s_type(base_s_type::bool_t,ad);
+	else if (t.s == "int") return new s_type(base_s_type::int_t, ad);
+	else if (t.s == "uint") return new s_type(base_s_type::uint_t, ad);
+	else if (t.s == "float") return new s_type(base_s_type::float_t, ad);
+	else if (t.s == "double") return new s_type(base_s_type::double_t, ad);
+	else if (t.s == "void") return new s_type(base_s_type::void_t, ad);
 	else
 	{ //could use regex, but i'm lazy
 		string base_type;
@@ -315,23 +327,23 @@ s_type* parse_type(tokenizer& tk)
 		if (md.empty()) //found vector or square mat
 		{
 			uint vecd = atoi(vd.c_str());
-			if (base_type == "bvec") return new s_type(base_s_type::bvec_t, vecd);
-			else if (base_type == "ivec") return new s_type(base_s_type::ivec_t, vecd);
-			else if (base_type == "uvec") return new s_type(base_s_type::uvec_t, vecd);
-			else if (base_type == "vec") return new s_type(base_s_type::vec_t, vecd);
-			else if (base_type == "dvec") return new s_type(base_s_type::dvec_t, vecd);
-			else if (base_type == "mat") return new s_type(base_s_type::mat_t, vecd, vecd);
-			else if (base_type == "dmat") return new s_type(base_s_type::dmat_t, vecd, vecd);
+			if (base_type == "bvec") return new s_type(base_s_type::bvec_t, vecd, ad);
+			else if (base_type == "ivec") return new s_type(base_s_type::ivec_t, vecd, ad);
+			else if (base_type == "uvec") return new s_type(base_s_type::uvec_t, vecd, ad);
+			else if (base_type == "vec") return new s_type(base_s_type::vec_t, vecd, ad);
+			else if (base_type == "dvec") return new s_type(base_s_type::dvec_t, vecd, ad);
+			else if (base_type == "mat") return new s_type(base_s_type::mat_t, vecd, vecd, ad);
+			else if (base_type == "dmat") return new s_type(base_s_type::dmat_t, vecd, vecd, ad);
 		}
 		else
 		{
 			uint vecd = atoi(vd.c_str());
 			uint matd = atoi(md.c_str());
-			if (base_type == "mat") return new s_type(base_s_type::mat_t, vecd, matd);
-			else if (base_type == "dmat") return new s_type(base_s_type::dmat_t, vecd, matd);
+			if (base_type == "mat") return new s_type(base_s_type::mat_t, vecd, matd, ad);
+			else if (base_type == "dmat") return new s_type(base_s_type::dmat_t, vecd, matd, ad);
 		}
 	}
-	return new s_type(t.s); //must be udt or invalid
+	return new s_type(t.s, ad); //must be udt or invalid
 }
 
 stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt)
@@ -895,11 +907,7 @@ shader_file* parse_shader(tokenizer& tk)
 				continue;
 			}
 		}
-		if (t.tp == token_type::end) break;
-		else
-		{
-			throw parser_exception(t, "invalid file decl");
-		}
+		if (t.tp == token_type::end || t.s == "") break;
 	}
 	return sf;
 }

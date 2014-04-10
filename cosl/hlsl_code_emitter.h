@@ -342,6 +342,7 @@ public:
 			_out << "void";
 			break;
 		}
+
 	}
 
 	void emit(decl& x)override

@@ -8,7 +8,7 @@ bool is_delimiter(char c, bool plain)
 {
 	return is_whitespace(c) || (c == ' ' || c == ';' || c == ',' ||
 		c == '(' || c == ')' || c == '+' || c == '-' || c == '*' || c == '/' || c == '%' || (!plain ? (c == '"' || c == '\'') : false)
-		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}' || c == '.');
+		|| c == '=' || c == '>' || c == '<' || c == '!' || c == '&' || c == '|' || c == '{' || c == '}' || c == '.' || c == '[' || c == ']');
 }
 
 bool is_two_char_special_first(char c)
@@ -37,28 +37,6 @@ token tokenizer::next_token()
 		{
 			if (s[idx] == '\n')
 				current_line++;
-			continue;
-		}
-
-		if(s[idx] == '/' && idx+1 < s.size() && s[idx+1] == '/')
-		{
-			while(s[idx] != '\n')
-			{
-				idx++;
-			}
-			current_line++;
-			continue;
-		}
-		if (s[idx] == '/' && idx + 1 < s.size() && s[idx + 1] == '*')
-		{
-			idx += 2;
-			while (s[idx] != '*' && idx+1 < s.size() && s[idx+1] != '/')
-			{
-				idx++;
-				if (s[idx] == '\n')
-					current_line++;
-			}
-			idx++;
 			continue;
 		}
 

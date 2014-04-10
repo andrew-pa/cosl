@@ -28,16 +28,19 @@ struct s_type : public ast_node
 	uint vecdim;
 	uint matdim;
 	string* udt_name;
-	s_type(base_s_type t)
-		: type(t), vecdim(-1), matdim(-1), udt_name(nullptr) {}
-	s_type(base_s_type t, uint vd)
-		: type(t), vecdim(vd), matdim(-1), udt_name(nullptr) {}
+	vector<uint> array_dims;
+	s_type(base_s_type t, vector<uint> ad)
+		: type(t), vecdim(-1), matdim(-1), array_dims(ad), udt_name(nullptr) {}
+	s_type(base_s_type t, uint vd, vector<uint> ad)
+		: type(t), vecdim(vd), matdim(-1), array_dims(ad), udt_name(nullptr) {}
 
-	s_type(base_s_type t, uint vd, uint md)
-		: type(t), vecdim(vd), matdim(md), udt_name(nullptr) {}
-	s_type(const string& udt_nm)
-		: type(base_s_type::user_def_t), udt_name(new string(udt_nm)), vecdim(-1), matdim(-1) {}
+	s_type(base_s_type t, uint vd, uint md, vector<uint> ad)
+		: type(t), vecdim(vd), matdim(md), array_dims(ad), udt_name(nullptr) {}
+	s_type(const string& udt_nm, vector<uint> ad)
+		: type(base_s_type::user_def_t), udt_name(new string(udt_nm)), array_dims(ad), vecdim(-1), matdim(-1) {}
 	
+
+
 	void emit(code_emitter* ce) override;
 };
 

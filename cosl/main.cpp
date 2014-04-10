@@ -37,6 +37,24 @@ string read_file_and_preprocess(const string& infpath)
 	while (!infs.eof())
 	{
 		getline(infs, s);
+		auto conts_cmmnt_slsh = s.find('/');
+		if(conts_cmmnt_slsh != s.npos)
+		{
+			if (conts_cmmnt_slsh + 1 < s.size() && s[conts_cmmnt_slsh+1] == '/')
+			{
+				s = string(s.begin(), s.begin()+conts_cmmnt_slsh);
+				if (s.size() == 0) continue;
+			}
+		}
+		if(s[0] == '/' && s[1] == '*')
+		{
+			while(true)
+			{
+				getline(infs, s);
+				auto x = s.find('/');
+				if (x != s.npos && (x + 1 > s.size() || s[x + 1] != '*')) break;
+			}
+		}
 		if (s[0] == '#')
 		{
 			istringstream iss(s);
@@ -58,12 +76,14 @@ string read_file_and_preprocess(const string& infpath)
 				string d;
 				iss >> d;
 				defines.insert(d);
+				continue;
 			}
 			if (cmd == "#undef")
 			{
 				string d;
 				iss >> d;
 				defines.erase(d);
+				continue;
 			}
 			if (cmd == "#endif") continue;
 
@@ -71,7 +91,7 @@ string read_file_and_preprocess(const string& infpath)
 			{
 				string f;
 				iss >> f;
-				f = f.substr(1, f.size() - 1); //remove < >
+				f = f.substr(1, f.size() - 2); //remove < >
 				if(incls.find(f) == incls.end())
 				{
 					string incl_txt;
@@ -79,7 +99,7 @@ string read_file_and_preprocess(const string& infpath)
 					{
 						try
 						{
-							incl_txt = read_file_and_preprocess(inp);
+							incl_txt = read_file_and_preprocess(inp + "\\" + f);
 							break;
 						}
 						catch(const stream_bad_or_fail_exception& ex)
@@ -91,10 +111,16 @@ string read_file_and_preprocess(const string& infpath)
 					in_file += incl_txt + "\n\n";
 					in_file += "//end header: " + f + "\n";
 				}
+				continue;
 			}
 		}
 		in_file += s + "\n";
 	}
+	/*cout << infpath << " :::: " << endl;
+	cout << in_file;
+	cout << " ]] " << endl;
+	getchar();*/
+	return in_file;
 }
 
 int main(int argc, char* argv[])
@@ -102,10 +128,11 @@ int main(int argc, char* argv[])
 	vector<string> args;
 	for (int i = 1; i < argc; ++i) args.push_back(string(argv[i]));
 
+	incl_paths.push_back("");
+
 	shader_target_language target_lang;
 	string in_file_path, out_file_path;
-	string hlsl__fxc_options; bool hlsl__use_fxc;
-	uint glsl__version_number;
+	string hlsl__fxc_options; bool hlsl__use_fxc = false;
 	
 	code_emitter* ce = nullptr;
 
@@ -118,11 +145,16 @@ int main(int argc, char* argv[])
 			target_lang = shader_target_language::HLSL;
 			in_file_path = args[i++];
 			out_file_path = args[i++];
-			if (i + 1 < args.size() && args[i + 1] == "-c")
+			if (i < args.size() && args[i] == "-c")
 			{
 				i++;
 				hlsl__use_fxc = true;
-				hlsl__fxc_options = args[i++];
+				ostringstream oss;
+				while (args[i] != ";")
+				{
+					oss << args[i++] << " ";
+				}
+				hlsl__fxc_options = oss.str();
 			}
 			defines.insert("HLSL");
 			ce = new hlsl_code_emitter;
@@ -143,6 +175,8 @@ int main(int argc, char* argv[])
 			incl_paths.push_back(args[i++]);
 		}
 	}
+	incl_paths.push_back(in_file_path.substr(0, in_file_path.find_last_of('\\')));
+
 
 	try
 	{
@@ -160,10 +194,9 @@ int main(int argc, char* argv[])
 		{
 			ostringstream oss;
 			oss << "fxc ";
-			for (int i = 4; i < args.size(); ++i) oss << args[i] << " ";
-			oss << otfpath;
-			//cout << "cmdline: " << oss.str() << endl;
-			return system(oss.str().c_str());
+			oss << out_file_path << " " << hlsl__fxc_options;
+			cout << "cmdline: " << oss.str() << endl;
+			return system(oss.str().c_str()); //super bad hack
 		}
 	}
 	catch(const exception& ex)
@@ -174,6 +207,7 @@ int main(int argc, char* argv[])
 #endif
 		return -1;
 	}
+	return 0;
 }
 
 
