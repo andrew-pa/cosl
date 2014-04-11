@@ -271,6 +271,8 @@ public:
 		emit(sh->type);
 		sh->inpblk->emit(this);
 		sh->outblk->emit(this);
+		for (auto& s : sh->structdefs)
+			s->emit(this);
 		for (auto& cb : sh->cbuffers)
 			cb->emit(this);
 		for (auto& tx : sh->texturedefs)
@@ -411,6 +413,7 @@ public:
 		for (auto& m : x->members)
 			_out << "." << m;
 	}
+
 
 	void emit(func_invoke_primary* x)override
 	{

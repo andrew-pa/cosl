@@ -71,6 +71,7 @@ struct decl_block : public ast_node
 
 
 	void emit(code_emitter* ce) override;
+
 };
 
 struct input_block : public ast_node
@@ -101,6 +102,16 @@ public:
 		: reg_idx(i), dclbk(dcl)	{}
 	void emit(code_emitter* ce) override;
 };
+
+struct struct_block : public ast_node
+{
+	string name;
+	decl_block* db;
+	struct_block(const string& n, decl_block* d)
+		: name(n), db(d){}
+	void emit(code_emitter* ce) override;
+};
+
 
 enum class texture_type
 {
@@ -159,6 +170,15 @@ struct member_access_primary : public id_primary
 	vector<string> members;
 	member_access_primary(primary* p, const vector<string>& m)
 		: val(p), members(m), id_primary("__invalid_member_access_primary"){}
+	void emit(code_emitter* ce) override;
+};
+
+struct array_index_primary : public primary
+{
+	primary* base;
+	vector<expr*> indices;
+	array_index_primary(primary* b, vector<expr*> ix)
+		: base(b), indices(ix){}
 	void emit(code_emitter* ce) override;
 };
 
@@ -396,5 +416,6 @@ public:
 	output_block* outblk;
 	vector<cbuffer_block*> cbuffers;
 	vector<texture_def*> texturedefs;
+	vector<struct_block*> structdefs;
 	vector<sfunction*> functions;
 };

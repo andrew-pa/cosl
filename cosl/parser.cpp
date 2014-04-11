@@ -10,6 +10,7 @@ primary* parse_primary(tokenizer& tk)
 		if (t.s == "(")
 		{
 			expr* x = parse_expr(tk);
+			primary* fi = new expr_in_paren(x);
 			t = tk.get_token();
 			if (t.s != ")") throw parser_exception(t, "expected )");
 			t = tk.get_token();
@@ -31,10 +32,26 @@ primary* parse_primary(tokenizer& tk)
 						break;
 					}
 				}
-				return new member_access_primary(new expr_in_paren(x), m);
+				fi =  new member_access_primary(fi, m);
 			}
-			tk.put_back(t);
-			return new expr_in_paren(x);
+			if (t.tp == token_type::special && t.s == "[")
+			{
+				vector<expr*> idxes;
+				while (t.s != "]")
+				{
+					if (t.s == ",")
+					{
+						idxes.push_back(parse_expr(tk));
+						t = tk.get_token();
+						continue;
+					}
+					idxes.push_back(parse_expr(tk));
+					t = tk.get_token();
+				}
+				fi = new array_index_primary(fi, idxes);
+			}
+			else tk.put_back(t);
+			return fi;
 		}
 	}
 		break;
@@ -57,6 +74,7 @@ primary* parse_primary(tokenizer& tk)
 				args.push_back(parse_expr(tk));
 				t = tk.get_token();
 			}
+			primary* fi = new func_invoke_primary(n, args);
 			t = tk.get_token();
 			if (t.tp == token_type::special && t.s == ".")
 			{
@@ -76,16 +94,33 @@ primary* parse_primary(tokenizer& tk)
 						break;
 					}
 				}
-				return new member_access_primary(new func_invoke_primary(n, args), m);
+				return new member_access_primary(fi, m);
 			}
-			tk.put_back(t);
-			return new func_invoke_primary(n, args);
+			if (t.tp == token_type::special && t.s == "[")
+			{
+				vector<expr*> idxes;
+				while (t.s != "]")
+				{
+					if (t.s == ",")
+					{
+						idxes.push_back(parse_expr(tk));
+						t = tk.get_token();
+						continue;
+					}
+					idxes.push_back(parse_expr(tk));
+					t = tk.get_token();
+				}
+				fi = new array_index_primary(fi, idxes);
+			}
+			else tk.put_back(t);
+			return fi;
 		}
 		else
 		{
 			tk.put_back(xt);
 			string tid = t.s;
 			t = tk.get_token();
+			primary* fi = new id_primary(tid);
 			if (t.tp == token_type::special && t.s == ".")
 			{
 				vector<string> m;
@@ -104,10 +139,26 @@ primary* parse_primary(tokenizer& tk)
 						break;
 					}
 				}
-				return new member_access_primary(new id_primary(tid), m);
+				fi = new member_access_primary(fi, m);
 			}
-			tk.put_back(t);
-			return new id_primary(tid);
+			if(t.tp == token_type::special && t.s == "[")
+			{
+				vector<expr*> idxes;
+				while (t.s != "]")
+				{
+					if (t.s == ",")
+					{
+						idxes.push_back(parse_expr(tk));
+						t = tk.get_token();
+						continue;
+					}
+					idxes.push_back(parse_expr(tk));
+					t = tk.get_token();
+				}
+				fi = new array_index_primary(fi, idxes);
+			}
+			else tk.put_back(t);
+			return fi;
 		}
 	}
 		break;
@@ -789,6 +840,13 @@ cbuffer_block* parse_cbuffer_block(tokenizer& tk)
 	decl_block* dcl = parse_decl_block(tk);
 	return new cbuffer_block(idx, dcl);
 }
+struct_block* parse_struct_block(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw parser_exception(t, "invalid struct def");
+	decl_block* d = parse_decl_block(tk);
+	return new struct_block(t.s, d);
+}
 
 texture_def* parse_texture_def(tokenizer& tk)
 {
@@ -898,6 +956,11 @@ shader_file* parse_shader(tokenizer& tk)
 			{
 				tk.put_back(t);
 				sf->texturedefs.push_back(parse_texture_def(tk));
+				continue;
+			}
+			else if(t.s == "struct")
+			{
+				sf->structdefs.push_back(parse_struct_block(tk));
 				continue;
 			}
 			else

@@ -29,6 +29,13 @@ public:
 		_out << "}";
 	}
 
+	void emit(struct_block* x)override
+	{
+		_out << "struct " << x->name << endl;
+		x->db->emit(this);
+		_out << ";" << endl;
+	}
+
 	void emit(num_primary* x)override
 	{
 		_out << x->num;
@@ -44,6 +51,17 @@ public:
 		_out << "(";
 		x->x->emit(this);
 		_out << ")";
+	}
+
+	void emit(array_index_primary* x) override
+	{
+		x->base->emit(this);
+		for (auto* i : x->indices)
+		{
+			_out << "[";
+			i->emit(this);
+			_out << "]";
+		}
 	}
 
 	void emit(mul_term* x)override

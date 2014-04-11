@@ -15,6 +15,7 @@ public:
 	virtual void emit(input_block* x)= 0;
 	virtual void emit(output_block* x)= 0;
 	virtual void emit(cbuffer_block* x)= 0;
+	virtual void emit(struct_block* x) = 0;
 	virtual void emit(texture_def* x)= 0;
 
 	//virtual void emit(expr* x)= 0;
@@ -24,6 +25,7 @@ public:
 	virtual void emit(num_primary* x)= 0;
 	virtual void emit(func_invoke_primary* x)= 0;
 	virtual void emit(member_access_primary* x) = 0;
+	virtual void emit(array_index_primary* x) = 0;
 	virtual void emit(primary_term* x)= 0;
 	virtual void emit(expr_in_paren* x) = 0;
 	virtual void emit(mul_term* x) = 0;
