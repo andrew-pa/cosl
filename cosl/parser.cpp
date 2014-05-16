@@ -121,6 +121,24 @@ primary* parse_primary(tokenizer& tk)
 			string tid = t.s;
 			t = tk.get_token();
 			primary* fi = new id_primary(tid);
+			
+			if(t.tp == token_type::special && t.s == "[")
+			{
+				vector<expr*> idxes;
+				while (t.s != "]")
+				{
+					if (t.s == ",")
+					{
+						idxes.push_back(parse_expr(tk));
+						t = tk.get_token();
+						continue;
+					}
+					idxes.push_back(parse_expr(tk));
+					t = tk.get_token();
+				}
+				fi = new array_index_primary(fi, idxes);
+				t = tk.get_token();
+			}
 			if (t.tp == token_type::special && t.s == ".")
 			{
 				vector<string> m;
@@ -140,22 +158,6 @@ primary* parse_primary(tokenizer& tk)
 					}
 				}
 				fi = new member_access_primary(fi, m);
-			}
-			if(t.tp == token_type::special && t.s == "[")
-			{
-				vector<expr*> idxes;
-				while (t.s != "]")
-				{
-					if (t.s == ",")
-					{
-						idxes.push_back(parse_expr(tk));
-						t = tk.get_token();
-						continue;
-					}
-					idxes.push_back(parse_expr(tk));
-					t = tk.get_token();
-				}
-				fi = new array_index_primary(fi, idxes);
 			}
 			else tk.put_back(t);
 			return fi;
@@ -209,26 +211,19 @@ term* parse_term(tokenizer& tk)
 		{
 			t = tk.get_token(); continue;
 		}
-		auto v = matchv<string, int>(t.s,
+		if(t.s == "*")
 		{
-			{ "*", [&]
-			{
-				primary* tt = dynamic_cast<primary*>(parse_primary(tk));
-				t = tk.get_token();
-				x = new mul_term(x, tt);
-				return 0;
-			}
-			},
-			{ "/", [&]
-			{
-				primary* tt = dynamic_cast<primary*>(parse_primary(tk));
-				t = tk.get_token();
-				x = new div_term(x, tt);
-				return 0;
-			}
-			},
-		}, -1);
-		if (v == -1)
+			primary* tt = dynamic_cast<primary*>(parse_primary(tk));
+			t = tk.get_token();
+			x = new mul_term(x, tt);
+		}
+		else if(t.s == "/")
+		{
+			primary* tt = dynamic_cast<primary*>(parse_primary(tk));
+			t = tk.get_token();
+			x = new div_term(x, tt);
+		}
+		else
 		{
 			tk.put_back(t);
 			return x;
@@ -265,7 +260,8 @@ expr* parse_bool_expr(tokenizer& tk)
 			break;
 		}
 		bool_op o = bool_op::less;
-		if (t.s == "<") o = bool_op::less;
+		if (t.s == "<") 
+			o = bool_op::less;
 		else if (t.s == ">") o = bool_op::greater;
 		else if (t.s == "<=") o = bool_op::less_equal;
 		else if (t.s == ">=") o = bool_op::greater_equal;

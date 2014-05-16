@@ -195,7 +195,7 @@ int main(int argc, char* argv[])
 			ostringstream oss;
 			oss << "fxc ";
 			oss << out_file_path << " " << hlsl__fxc_options;
-			cout << "cmdline: " << oss.str() << endl;
+			//cout << "cmdline: " << oss.str() << endl;
 			return system(oss.str().c_str()); //super bad hack
 		}
 	}

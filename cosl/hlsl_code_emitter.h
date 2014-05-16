@@ -40,7 +40,7 @@ class hlsl_code_emitter : public c_style_code_emitter
 	}
 	enum special_func_type
 	{
-		none, vector, sample, math
+		none, vector, sample, math, special_op
 	}; 
 	bool is_special_func(const string& n)
 	{
@@ -80,6 +80,7 @@ class hlsl_code_emitter : public c_style_code_emitter
 		if (n == "sample_texture") return true;
 		if (n == "fract") return true;
 		if (n == "mix") return true;
+		if (n == "discard") return true;
 		return false;
 	}
 	bool is_special_func(const string& n, special_func_type& t, string& base_type, uint& vecd, uint& matd)
@@ -123,6 +124,9 @@ class hlsl_code_emitter : public c_style_code_emitter
 		t = special_func_type::math;
 		if (n == "fract") return true;
 		if (n == "mix") return true;
+		t = special_func_type::special_op;
+		if (n == "discard")
+			return true;
 		t = special_func_type::none;
 		return false;
 	}
@@ -213,6 +217,13 @@ class hlsl_code_emitter : public c_style_code_emitter
 				_out << ")";
 			}
 		}
+		else if(t == special_func_type::special_op)
+		{
+			if(x->func_name == "discard")
+			{
+				_out << "clip(-1.f)";
+			}
+		}
 	}
 
 	void emit_special_func(func_invoke_stmt* x)
@@ -257,6 +268,56 @@ class hlsl_code_emitter : public c_style_code_emitter
 				x->args[i]->emit(this);
 			}
 			_out << ")";
+		}
+		else if (t == special_func_type::math)
+		{
+			if (x->func_name == "fract")
+			{
+				_out << "frac(";
+				if (x->args.size() == 1)
+				{
+					x->args[0]->emit(this);
+				}
+				else
+				{
+					int i = 0;
+					for (auto& a : x->args)
+					{
+						a->emit(this);
+						if (i != x->args.size() - 1)
+							_out << ", ";
+						i++;
+					}
+				}
+				_out << ")";
+			}
+			else if (x->func_name == "mix")
+			{
+				_out << "lerp(";
+				if (x->args.size() == 1)
+				{
+					x->args[0]->emit(this);
+				}
+				else
+				{
+					int i = 0;
+					for (auto& a : x->args)
+					{
+						a->emit(this);
+						if (i != x->args.size() - 1)
+							_out << ", ";
+						i++;
+					}
+				}
+				_out << ")";
+			}
+		}
+		else if (t == special_func_type::special_op)
+		{
+			if (x->func_name == "discard")
+			{
+				_out << "clip(-1.f)";
+			}
 		}
 	}
 
@@ -351,6 +412,15 @@ public:
 	{
 		x.type->emit(this);
 		_out << " " << x.name;
+		if (x.type->array_dims.size() > 0)
+		{
+			for (uint d : x.type->array_dims)
+			{
+				_out << "[";
+				_out << d;
+				_out << "]";
+			}
+		}
 		if (x.sem != nullptr)
 			_out << " : " << translate_semantic(x.sem);
 	}

@@ -117,7 +117,7 @@ public:
 			_out << " == ";
 			break;
 		case bool_op::less:
-			_out << " != ";
+			_out << " < ";
 			break;
 		case bool_op::less_equal:
 			_out << " <= ";

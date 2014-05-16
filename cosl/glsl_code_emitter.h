@@ -42,6 +42,10 @@ class glsl_code_emitter : public c_style_code_emitter
 			args[0]->emit(this);
 			_out << ")";
 		}
+		if(name == "discard")
+		{
+			_out << " { discard; }";
+		}
 		else
 		{
 			_out << name << "(";
@@ -98,7 +102,16 @@ public:
 			}
 		}
 		x.type->emit(this);
-		_out << " " << x.name;
+		_out << " " << x.name;		
+		if (x.type->array_dims.size() > 0)
+		{
+			for (uint d : x.type->array_dims)
+			{
+				_out << "[";
+				_out << d;
+				_out << "]";
+			}
+		}
 		//ignore other semantics because GLSL doesn't have it. could be translated to layout idx
 	}
 
@@ -154,7 +167,7 @@ public:
 		_out << "layout(std140) uniform ";
 		if (shmode == shader_type::vertex_shader) _out << "vs_";
 		else if (shmode == shader_type::pixel_shader) _out << "ps_";
-		_out << "block_" << x->reg_idx;
+		_out << "block_" << x->reg_idx << " ";
 		x->dclbk->emit(this);
 		_out << ";" << endl;
 	}
