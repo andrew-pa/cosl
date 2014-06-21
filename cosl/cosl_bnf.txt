@@ -32,7 +32,7 @@
 <id> := #ID 
 		| <primary> ('.' #ID)+
 
-<primary> := <id> | #NUM | '(' <expr> ')' 
+<primary> := <id> | #NUM | '(' <expr> ')' | '-' <expr> ; negation
 		   | #ID '(' (<expr> ',')+ ')' ;function invocation
 		   | <primary>'['(<expr> ',')+']'
 

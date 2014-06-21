@@ -191,6 +191,15 @@ struct num_primary : public primary
 	void emit(code_emitter* ce) override;
 };
 
+struct negation_primary : public primary
+{
+	expr* exp;
+	negation_primary() {}
+	negation_primary(expr* e)
+		: exp(e){}
+	void emit(code_emitter* ce) override;
+};
+
 struct func_invoke_primary : public primary
 {
 	string func_name;

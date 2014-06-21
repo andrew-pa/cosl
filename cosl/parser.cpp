@@ -53,6 +53,50 @@ primary* parse_primary(tokenizer& tk)
 			else tk.put_back(t);
 			return fi;
 		}
+		else if(t.s == "-")
+		{
+			expr* x = parse_expr(tk);
+			primary* fi = new negation_primary(x);
+			t = tk.get_token();
+			if (t.tp == token_type::special && t.s == ".")
+			{
+				vector<string> m;
+				while (true)
+				{
+					t = tk.get_token();
+					if (t.tp != token_type::id)
+						break;
+					m.push_back(t.s);
+					t = tk.get_token();
+					if (t.tp == token_type::special && t.s == ".")
+						continue;
+					else
+					{
+						tk.put_back(t);
+						break;
+					}
+				}
+				fi = new member_access_primary(fi, m);
+			}
+			if (t.tp == token_type::special && t.s == "[")
+			{
+				vector<expr*> idxes;
+				while (t.s != "]")
+				{
+					if (t.s == ",")
+					{
+						idxes.push_back(parse_expr(tk));
+						t = tk.get_token();
+						continue;
+					}
+					idxes.push_back(parse_expr(tk));
+					t = tk.get_token();
+				}
+				fi = new array_index_primary(fi, idxes);
+			}
+			else tk.put_back(t);
+			return fi;
+		}
 	}
 		break;
 	case token_type::id:

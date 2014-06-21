@@ -41,8 +41,8 @@ token tokenizer::next_token()
 		}
 
 		if (isdigit(s[idx]) ||
-			((s[idx] == '-' || s[idx] == '.')
-			&& (idx + 1 < s.size() && is_numeric_body(s[idx + 1]))))
+			(s[idx] == '.')
+			&& (idx + 1 < s.size() && is_numeric_body(s[idx + 1])))
 		{
 			string d;
 			d += s[idx];

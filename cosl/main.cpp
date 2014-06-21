@@ -27,6 +27,8 @@ struct stream_bad_or_fail_exception : public exception
 {
 };
 
+//TODO: Make negation work for all primaries, not just numbers
+
 string read_file_and_preprocess(const string& infpath)
 {
 	ifstream infs(infpath);

@@ -64,6 +64,13 @@ public:
 		}
 	}
 
+	void emit(negation_primary* x) override 
+	{
+		_out << "-(";
+		x->exp->emit(this);
+		_out << ")";
+	}
+
 	void emit(mul_term* x)override
 	{
 		x->left->emit(this);

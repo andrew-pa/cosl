@@ -26,6 +26,7 @@ public:
 	virtual void emit(func_invoke_primary* x)= 0;
 	virtual void emit(member_access_primary* x) = 0;
 	virtual void emit(array_index_primary* x) = 0;
+	virtual void emit(negation_primary* x) = 0;
 	virtual void emit(primary_term* x)= 0;
 	virtual void emit(expr_in_paren* x) = 0;
 	virtual void emit(mul_term* x) = 0;
