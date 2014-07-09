@@ -38,289 +38,137 @@ class hlsl_code_emitter : public c_style_code_emitter
 			return oss.str();
 		}
 	}
-	enum special_func_type
+
+	bool is_vector_ctor(const string& name)
 	{
-		none, vector, sample, math, special_op
-	}; 
-	bool is_special_func(const string& n)
-	{
-		{ //could use regex, but i'm lazy
-			string base_type;
-			bool seen_x = false;
-			string vd, md;
-			for (int i = 0; i < n.size(); ++i)
-			{
-				if (n[i] == 'x') seen_x = true;
-				else if (!isdigit(n[i])) base_type += n[i];
-				else
-				{
-					if (seen_x) md += n[i];
-					else vd += n[i];
-				}
-			}
-			if (md.empty()) //found vector or square mat
-			{
-				uint vecd = atoi(vd.c_str());
-				if (base_type == "bvec") return true;
-				else if (base_type == "ivec") return true;
-				else if (base_type == "uvec") return true;
-				else if (base_type == "vec") return true;
-				else if (base_type == "dvec") return true;
-				else if (base_type == "mat") return true;
-				else if (base_type == "dmat") return true;
-			}
-			else
-			{
-				uint vecd = atoi(vd.c_str());
-				uint matd = atoi(md.c_str());
-				if (base_type == "mat") return true;
-				else if (base_type == "dmat") return true;
-			}
-		}
-		if (n == "sample_texture") return true;
-		if (n == "fract") return true;
-		if (n == "mix") return true;
-		if (n == "discard") return true;
-		return false;
+		auto v = name.find("vec", 0);
+		auto m = name.find("mat", 0);
+		return v != name.npos ||
+			m != name.npos; //hax!
 	}
-	bool is_special_func(const string& n, special_func_type& t, string& base_type, uint& vecd, uint& matd)
+
+	tuple<base_s_type, uint, uint> get_vector_type(const string& name)
 	{
-		t = special_func_type::vector;
-		{ //could use regex, but i'm lazy
-			bool seen_x = false;
-			string vd, md;
-			for (int i = 0; i < n.size(); ++i)
+		string base_type;
+		bool seen_x = false;
+		string vd, md;
+		for (int i = 0; i < name.size(); ++i)
+		{
+			if (name[i] == 'x') seen_x = true;
+			else if (!isdigit(name[i])) base_type += name[i];
+			else
 			{
-				if (n[i] == 'x') seen_x = true;
-				else if (!isdigit(n[i])) base_type += n[i];
-				else
-				{
-					if (seen_x) md += n[i];
-					else vd += n[i];
-				}
+				if (seen_x) md += name[i];
+				else vd += name[i];
 			}
-			if (md.empty()) //found vector or square mat
+		}
+		if(md.empty())
+		{
+			uint vecd = atoi(vd.c_str());
+			base_s_type bt = base_s_type::void_t;
+			if (base_type == "bvec") bt = base_s_type::bvec_t;
+			else if (base_type == "ivec") bt = base_s_type::ivec_t;
+			else if (base_type == "uvec") bt = base_s_type::uvec_t;
+			else if (base_type == "vec") bt = base_s_type::vec_t;
+			else if (base_type == "dvec") bt = base_s_type::dvec_t;
+			else if (base_type == "mat") bt = base_s_type::mat_t;
+			else if (base_type == "dmat") bt = base_s_type::dmat_t;
+			tuple<base_s_type, uint, uint> vt{bt, vecd, -1};
+			return vt;
+		}
+		else
+		{
+			uint vecd = atoi(vd.c_str());
+			uint matd = atoi(md.c_str());
+			if (base_type == "mat") return tuple < base_s_type, uint, uint > {base_s_type::mat_t, vecd, matd};
+			else if (base_type == "dmat") return tuple < base_s_type, uint, uint > {base_s_type::dmat_t, vecd, matd};
+		}
+	}
+
+	string translate_vec_ctor(const tuple<base_s_type, uint, uint>& vt)
+	{
+		ostringstream oss;
+
+		auto bt = get<0>(vt);
+		auto vd = get<1>(vt);
+		auto md = get<2>(vt);
+
+		if (bt == base_s_type::bvec_t) oss << "bool" << vd;
+		else if (bt == base_s_type::ivec_t) oss << "int" << vd;
+		else if (bt == base_s_type::uvec_t) oss << "uint" << vd;
+		else if (bt == base_s_type::vec_t) oss << "float" << vd;
+		else if (bt == base_s_type::dvec_t) oss << "double" << vd;
+		else if (bt == base_s_type::mat_t) oss << "float" << vd << "x" << md;
+		else if (bt == base_s_type::dmat_t) oss << "double" << vd << "x" << md;
+
+		return oss.str();
+	}
+
+	bool emit_special_function(const string& name, const vector<expr*>& args) override
+	{
+		if(is_vector_ctor(name))
+		{
+			auto vt = get_vector_type(name);
+			auto ctor_func_name = translate_vec_ctor(vt);
+			_out << ctor_func_name << "(";
+			if(args.size() == 1) //replicate scalar value because HLSL is stupid
 			{
-				vecd = atoi(vd.c_str());
-				matd = vecd;
-				if (base_type == "bvec") return true;
-				else if (base_type == "ivec") return true;
-				else if (base_type == "uvec") return true;
-				else if (base_type == "vec") return true;
-				else if (base_type == "dvec") return true;
-				else if (base_type == "mat") return true;
-				else if (base_type == "dmat") return true;
+				args[0]->emit(this);
+				_out << ", ";
+				args[0]->emit(this);
+				_out << ", ";
+				args[0]->emit(this);
 			}
 			else
 			{
-				vecd = atoi(vd.c_str());
-				matd = atoi(md.c_str());
-				if (base_type == "mat") return true;
-				else if (base_type == "dmat") return true;
+				for (int i = 0; i < args.size(); ++i)
+				{
+					args[i]->emit(this);
+					if (i != args.size() - 1)
+						_out << ", ";
+				}
 			}
-		}
-		t = special_func_type::sample;
-		if (n == "sample_texture") return true;
-		t = special_func_type::math;
-		if (n == "fract") return true;
-		if (n == "mix") return true;
-		t = special_func_type::special_op;
-		if (n == "discard")
+			_out << ")";
 			return true;
-		t = special_func_type::none;
+		}
+		else if(name == "sample_texture")
+		{
+			if (args.size() != 2)
+				throw new exception("too many or too few arguments to sample_texture");
+			args[0]->emit(this);
+			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(args[0])->id_s; //TODO: this prohibits passing a texture to another function
+			_out << ", ";
+			args[1]->emit(this);
+			_out << ")";
+			return true;
+		}
+		else if(name == "mix")
+		{
+			if (args.size() != 3) throw exception("too many or not enough arguments to mix()");
+			_out << "lerp(";
+			args[0]->emit(this);
+			_out << ", ";
+			args[1]->emit(this);
+			_out << ", ";
+			args[2]->emit(this);
+			_out << ")";
+			return true;
+		}
+		else if(name == "fract")
+		{
+			if (args.size() != 1) throw exception("too many or not enough arguments to fract()");
+			_out << "frac(";
+			args[0]->emit(this);
+			_out << ")";
+			return true;
+		}
+		else if(name == "discard")
+		{
+			_out << "clip(-1.f)";
+			return true;
+		}
 		return false;
 	}
-
-	void emit_special_func(func_invoke_primary* x)
-	{
-		special_func_type t; string bt; uint vd, md;
-		is_special_func(x->func_name, t, bt, vd, md);
-		if(t == special_func_type::vector)
-		{
-			if (bt == "bvec") _out << "bool" << vd;
-			else if (bt == "ivec") _out << "int" << vd;
-			else if (bt == "uvec") _out << "uint" << vd;
-			else if (bt == "vec") _out << "float" << vd;
-			else if (bt == "dvec") _out << "double" << vd;
-			else if (bt == "mat") _out << "float" << vd << "x" << md;
-			else if (bt == "dmat") _out << "double" << vd << "x" << md;
-
-			_out << "(";
-			if (x->args.size() == 1)
-			{
-				x->args[0]->emit(this);
-			}
-			else
-			{
-				int i = 0;
-				for (auto& a : x->args)
-				{
-					a->emit(this);
-					if (i != x->args.size() - 1)
-						_out << ", ";
-					i++;
-				}
-			}
-			_out << ")";
-		}
-		else if(t == special_func_type::sample)
-		{
-			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->id_s;
-			for (int i = 1; i < x->args.size(); ++i)
-			{
-				_out << ", ";
-				x->args[i]->emit(this);
-			}
-			_out << ")";
-		}
-		else if(t == special_func_type::math)
-		{
-			if(x->func_name == "fract")
-			{
-				_out << "frac(";
-				if (x->args.size() == 1)
-				{
-					x->args[0]->emit(this);
-				}
-				else
-				{
-					int i = 0;
-					for (auto& a : x->args)
-					{
-						a->emit(this);
-						if (i != x->args.size() - 1)
-							_out << ", ";
-						i++;
-					}
-				}
-				_out << ")";
-			}
-			else if (x->func_name == "mix")
-			{
-				_out << "lerp(";
-				if (x->args.size() == 1)
-				{
-					x->args[0]->emit(this);
-				}
-				else
-				{
-					int i = 0;
-					for (auto& a : x->args)
-					{
-						a->emit(this);
-						if (i != x->args.size() - 1)
-							_out << ", ";
-						i++;
-					}
-				}
-				_out << ")";
-			}
-		}
-		else if(t == special_func_type::special_op)
-		{
-			if(x->func_name == "discard")
-			{
-				_out << "clip(-1.f)";
-			}
-		}
-	}
-
-	void emit_special_func(func_invoke_stmt* x)
-	{
-		special_func_type t; string bt; uint vd, md;
-		is_special_func(x->func_name, t, bt, vd, md);
-		if (t == special_func_type::vector)
-		{
-			if (bt == "bvec") _out << "bool" << vd;
-			else if (bt == "ivec") _out << "int" << vd;
-			else if (bt == "uvec") _out << "uint" << vd;
-			else if (bt == "vec") _out << "float" << vd;
-			else if (bt == "dvec") _out << "double" << vd;
-			else if (bt == "mat") _out << "float" << vd << "x" << md;
-			else if (bt == "dmat") _out << "double" << vd << "x" << md;
-
-			_out << "(";
-			if (x->args.size() == 1)
-			{
-				x->args[0]->emit(this);
-			}
-			else
-			{
-				int i = 0;
-				for (auto& a : x->args)
-				{
-					a->emit(this);
-					if (i != x->args.size() - 1)
-						_out << ", ";
-					i++;
-				}
-			}
-			_out << ")";
-		}
-		else if (t == special_func_type::sample)
-		{
-			x->args[0]->emit(this);
-			_out << ".Sample(___smp_" << dynamic_cast<id_primary*>(x->args[0])->id_s;
-			for (int i = 1; i < x->args.size(); ++i)
-			{
-				_out << ", ";
-				x->args[i]->emit(this);
-			}
-			_out << ")";
-		}
-		else if (t == special_func_type::math)
-		{
-			if (x->func_name == "fract")
-			{
-				_out << "frac(";
-				if (x->args.size() == 1)
-				{
-					x->args[0]->emit(this);
-				}
-				else
-				{
-					int i = 0;
-					for (auto& a : x->args)
-					{
-						a->emit(this);
-						if (i != x->args.size() - 1)
-							_out << ", ";
-						i++;
-					}
-				}
-				_out << ")";
-			}
-			else if (x->func_name == "mix")
-			{
-				_out << "lerp(";
-				if (x->args.size() == 1)
-				{
-					x->args[0]->emit(this);
-				}
-				else
-				{
-					int i = 0;
-					for (auto& a : x->args)
-					{
-						a->emit(this);
-						if (i != x->args.size() - 1)
-							_out << ", ";
-						i++;
-					}
-				}
-				_out << ")";
-			}
-		}
-		else if (t == special_func_type::special_op)
-		{
-			if (x->func_name == "discard")
-			{
-				_out << "clip(-1.f)";
-			}
-		}
-	}
-
 public:
 	hlsl_code_emitter()
 	{
@@ -482,58 +330,6 @@ public:
 		x->val->emit(this);
 		for (auto& m : x->members)
 			_out << "." << m;
-	}
-
-
-	void emit(func_invoke_primary* x)override
-	{
-		if (is_special_func(x->func_name))
-		{
-			emit_special_func(x);
-			return;
-		}
-		_out << x->func_name << "(";
-		if (x->args.size() == 1)
-		{
-			x->args[0]->emit(this);
-		}
-		else
-		{
-			int i = 0;
-			for (auto& a : x->args)
-			{
-				a->emit(this);
-				if (i != x->args.size() - 1)
-					_out << ", ";
-				i++;
-			}
-		}
-		_out << ")";
-	}
-	void emit(func_invoke_stmt* x)override
-	{
-		if (is_special_func(x->func_name))
-		{
-			emit_special_func(x);
-			return;
-		}
-		_out << x->func_name << "(";
-		if (x->args.size() == 1)
-		{
-			x->args[0]->emit(this);
-		}
-		else
-		{
-			int i = 0;
-			for (auto& a : x->args)
-			{
-				a->emit(this);
-				if (i != x->args.size() - 1)
-					_out << ", ";
-				i++;
-			}
-		}
-		_out << ")";
 	}
 
 	void emit(sfunction* x)override

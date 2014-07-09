@@ -27,8 +27,6 @@ struct stream_bad_or_fail_exception : public exception
 {
 };
 
-//TODO: Make negation work for all primaries, not just numbers
-
 string read_file_and_preprocess(const string& infpath)
 {
 	ifstream infs(infpath);
@@ -42,10 +40,14 @@ string read_file_and_preprocess(const string& infpath)
 		auto conts_cmmnt_slsh = s.find('/');
 		if(conts_cmmnt_slsh != s.npos)
 		{
-			if (conts_cmmnt_slsh + 1 < s.size() && s[conts_cmmnt_slsh+1] == '/')
+			if (conts_cmmnt_slsh + 1 < s.size()) throw exception("this is irrlogical"); //what is this case? => "/" not valid!
+			if (s[conts_cmmnt_slsh+1] == '/')
 			{
 				s = string(s.begin(), s.begin()+conts_cmmnt_slsh);
 				if (s.size() == 0) continue;
+			}
+			else if(s[conts_cmmnt_slsh+1] == '*')
+			{
 			}
 		}
 		if(s[0] == '/' && s[1] == '*')
@@ -69,7 +71,9 @@ string read_file_and_preprocess(const string& infpath)
 				if (defines.find(d) == defines.end())
 				{
 					while (!infs.eof() && s != "#endif")
+					{
 						getline(infs, s);
+					}
 					continue;
 				}
 			}
@@ -87,7 +91,10 @@ string read_file_and_preprocess(const string& infpath)
 				defines.erase(d);
 				continue;
 			}
-			if (cmd == "#endif") continue;
+			if (cmd == "#endif") 
+			{
+				continue;
+			}
 
 			if(cmd == "#include") 
 			{
@@ -109,9 +116,7 @@ string read_file_and_preprocess(const string& infpath)
 							continue;
 						}
 					}
-					in_file += "//begin header: " + f + "\n";
-					in_file += incl_txt + "\n\n";
-					in_file += "//end header: " + f + "\n";
+					in_file += incl_txt + "\n";
 				}
 				continue;
 			}

@@ -330,6 +330,10 @@ expr* parse_bool_expr(tokenizer& tk)
 		t = tk.get_token();
 		l = new binary_bexpr(l, o, r);
 	}
+	if(dynamic_cast<bool_expr*>(l) == nullptr)
+	{
+		return new bool_expr_xvr(l);
+	}
 	return l;
 }
 

@@ -298,6 +298,14 @@ struct binary_bexpr : public bool_expr
 	void emit(code_emitter* ce) override;
 };
 
+struct bool_expr_xvr : public bool_expr
+{
+	expr* xpr;
+	bool_expr_xvr(expr* _xpr)
+		: xpr(_xpr) {}
+	inline void emit(code_emitter* ce) override { xpr->emit(ce); }
+};
+
 #pragma endregion
 
 #pragma region stmt

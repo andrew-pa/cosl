@@ -11,24 +11,26 @@ class glsl_code_emitter : public c_style_code_emitter
 	shader_type shmode;
 	string vs_str;
 	map<string, uint> txaliases;
+	map<string, uint> ftxidims;
 	string rspos;
 
-	void emit_function(const string& name, const vector<expr*>& args)
+	bool emit_special_function(const string& name, const vector<expr*>& args) override
 	{
 		if(name == "sample_texture")
 		{
+			if (args.size() != 2)
+				throw new exception("too many or too few arguments to sample_texture");
 			string txname = dynamic_cast<id_primary*>(args[0])->id_s;
 			_out << "texture(";
 			if (shmode == shader_type::vertex_shader) _out << "vs_";
 			else if (shmode == shader_type::pixel_shader) _out << "ps_";
-			_out << "tex_" << txaliases[txname];
-			for (int i = 1; i < args.size(); ++i)
-			{
-				_out << ", ";
-				args[i]->emit(this);
-			}
+			_out << "tex_" << txaliases[txname] << ", ";
+			args[1]->emit(this);
+			//emit multiply that causes the y coord to flip to match DX/HLSL
+			if (ftxidims[txname] == 2) _out << "*vec2(1., -1.)";
+			else if (ftxidims[txname] == 3) _out << "*vec3(1.,-1.,1.)";
 			_out << ")";
-			return;
+			return true;
 		}
 		if(name == "mul")
 		{
@@ -41,31 +43,14 @@ class glsl_code_emitter : public c_style_code_emitter
 			_out << " * ";
 			args[0]->emit(this);
 			_out << ")";
+			return true;
 		}
-		if(name == "discard")
+		else if(name == "discard")
 		{
 			_out << " { discard; }";
+			return true;
 		}
-		else
-		{
-			_out << name << "(";
-			if(args.size()==1)
-			{
-				args[0]->emit(this);
-			}
-			else
-			{
-				int i = 0;
-				for(auto& a : args)
-				{
-					a->emit(this);
-					if(i != args.size()-1)
-						_out << ", ";
-					i++;
-				}
-			}
-			_out << ")";
-		}
+		return false; //function wasn't really special
 	}
 public:
 	glsl_code_emitter(const string& version_string) : vs_str(version_string) { }
@@ -178,15 +163,19 @@ public:
 		{
 		case texture_type::texture1D:
 			_out << "uniform sampler1D ";
+			ftxidims[x->name] = 1;
 			break;
 		case texture_type::texture2D:
 			_out << "uniform sampler2D ";
+			ftxidims[x->name] = 2;
 			break;
 		case texture_type::texture3D:
 			_out << "uniform sampler3D ";
+			ftxidims[x->name] = 3;
 			break;
 		case texture_type::textureCube:
 			_out << "uniform samplerCube ";
+			ftxidims[x->name] = 7;
 			break;
 		}
 		if (shmode == shader_type::vertex_shader) _out << "vs_";
@@ -278,16 +267,6 @@ public:
 		for (auto& m : x->members)
 			_out << "." << m;
 		
-	}
-
-	void emit(func_invoke_primary* x) override
-	{
-		emit_function(x->func_name, x->args);
-	}
-	
-	void emit(func_invoke_stmt* x) override
-	{
-		emit_function(x->func_name, x->args);
 	}
 	
 	void emit(sfunction* x) override

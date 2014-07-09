@@ -57,5 +57,11 @@
     <ClCompile Include="ast.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="scratch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test_0.shdr" />
   </ItemGroup>
 </Project>

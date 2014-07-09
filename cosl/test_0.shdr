@@ -1,0 +1,5 @@
+//Test code for COSL translator
+/*
+	Attempts to contain all constructs listed in cosl_bnf.txt, and also exercise every piece of code
+	This multiline comment is part of this
+*/

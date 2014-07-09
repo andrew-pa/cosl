@@ -10,6 +10,29 @@ class c_style_code_emitter : public code_emitter
 {
 protected:
 	ostringstream _out;
+
+	virtual bool emit_special_function(const string& name, const vector<expr*>& args) = 0;
+
+	virtual void emit_regular_function(const string& name, const vector<expr*>& args)
+	{
+		_out << name << "(";
+		if (args.size() == 1)
+		{
+			args[0]->emit(this);
+		}
+		else
+		{
+			int i = 0;
+			for (auto& a : args)
+			{
+				a->emit(this);
+				if (i != args.size() - 1)
+					_out << ", ";
+				i++;
+			}
+		}
+		_out << ")";
+	}
 public:
 	string out_string() const override { return _out.str(); }
 
@@ -69,6 +92,18 @@ public:
 		_out << "-(";
 		x->exp->emit(this);
 		_out << ")";
+	}
+
+	void emit(func_invoke_primary* x) override
+	{
+		if (!emit_special_function(x->func_name, x->args))
+			emit_regular_function(x->func_name, x->args);
+	}
+
+	void emit(func_invoke_stmt* x) override
+	{
+		if (!emit_special_function(x->func_name, x->args))
+			emit_regular_function(x->func_name, x->args);
 	}
 
 	void emit(mul_term* x)override

@@ -81,7 +81,11 @@
     <ClCompile Include="ast.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="parser.cpp" />
+    <ClCompile Include="scratch.cpp" />
     <ClCompile Include="tokenizer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="test_0.shdr" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
