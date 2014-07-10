@@ -24,6 +24,21 @@ inline bool is_a(T* v)
 	return (dynamic_cast<A*>(v) != nullptr);
 }
 
+struct compile_exception : public exception
+{
+	string file; uint line;
+	compile_exception(const string& msg, const string& _file, uint _line)
+		: exception(msg.c_str()), file(_file), line(_line) {}
+
+	inline const char* what() const override
+	{
+		ostringstream msgo;
+		msgo << file << "(" << line << "):" << exception::what();
+		return msgo.str().c_str();
+	}
+};
+
+// DO NOT USE!!!!
 template <typename T, typename F, typename _Compare = equal_to<T>>
 inline const F& matchv(const T& v, vector<pair<T, function<const F&()>>> pmes, const F& def = F())
 {
@@ -37,6 +52,7 @@ inline const F& matchv(const T& v, vector<pair<T, function<const F&()>>> pmes, c
 	}
 	return def;
 }
+// DO NOT USE!!!!
 template <typename T, typename F, typename _Compare = equal_to<T>>
 inline const F& matchv(const T& v, vector<pair<T, function<const F&()>>> pmes, 
 	function<const F&()> def = [&]{ return F(); })

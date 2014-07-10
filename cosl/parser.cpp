@@ -311,8 +311,22 @@ expr* parse_bool_expr(tokenizer& tk)
 		else if (t.s == ">=") o = bool_op::greater_equal;
 		else if (t.s == "==") o = bool_op::equal;
 		else if (t.s == "!=") o = bool_op::not_equal;
-		else if (t.s == "&&") o = bool_op::and;
-		else if (t.s == "||") o = bool_op::or;
+		else if (t.s == "&&")
+		{
+			o = bool_op::and;
+			expr* r = parse_bool_expr(tk);
+			t = tk.get_token();
+			l = new binary_bexpr(l, o, r);
+			continue;
+		}
+		else if (t.s == "||")
+		{
+			o = bool_op::or;
+			expr* r = parse_bool_expr(tk);
+			t = tk.get_token();
+			l = new binary_bexpr(l, o, r);
+			continue;
+		}
 		else throw parser_exception(t, "invalid bool operator");
 		/*bool_op o = matchv<string, bool_op>(t.s,
 		{
@@ -449,6 +463,8 @@ stmt* parse_decl_stmt(tokenizer& tk, s_type* ppt)
 	t = tk.get_token();
 	if (t.tp == token_type::special && t.s == "=")
 	{
+		if (ppt->type == base_s_type::bool_t)
+			return new decl_stmt(ppt, idn, parse_bool_expr(tk));
 		return new decl_stmt(ppt, idn, parse_expr(tk));
 	}
 	else
@@ -605,6 +621,8 @@ stmt* parse_if_stmt(tokenizer& tk)
 	if (t.tp != token_type::special && t.s != ")") throw parser_exception(t, "invalid if stmt"); //eat closing )
 	stmt* st = parse_stmt(tk, false);
 	t = tk.get_token();
+	if (t.tp == token_type::special && t.s == ";") //skip one line stmts + ;
+		t = tk.get_token();
 	if (t.tp == token_type::id && t.s == "else")
 	{
 		stmt* et = parse_stmt(tk, false);
@@ -795,7 +813,7 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 			{
 				stmt* ns = parse_stmt(tk);
 				t = tk.get_token();
-				if (t.s != "}") throw parser_exception(t, "missing closing }");
+ 				if (t.s != "}") throw parser_exception(t, "missing closing }");
 				//stmt* nx = parse_stmt(tk);
 				return new block_stmt(ns);
 			}
@@ -820,7 +838,7 @@ semantic* parse_semantic(tokenizer& tk)
 decl parse_decl(tokenizer& tk)
 {
 	s_type* tp = parse_type(tk);
-	if (tp == nullptr) throw exception("invalid type");
+	if (tp == nullptr) throw exception("invalid type for decl");
 	auto t = tk.get_token();
 	if (t.tp != token_type::id) throw parser_exception(t, "invalid decl");
 	string nm = t.s;
@@ -840,6 +858,14 @@ decl_block* parse_decl_block(tokenizer& tk)
 		throw parser_exception(t, "decl block missing opening {");
 
 	vector<decl> dcl;
+
+	auto xt = tk.get_token();
+	if (xt.tp == token_type::special && xt.s == "}")
+	{
+		//this decl block is empty so return w/ empty vector
+		return new decl_block(dcl); 
+	}
+	tk.put_back(xt);
 
 	while (!(t.tp == token_type::special && t.s == "}"))
 	{
@@ -942,11 +968,12 @@ sfunction* parse_function_def(tokenizer& tk)
 		tk.put_back(t);
 		while (!(t.tp == token_type::special && t.s == ")"))
 		{
+			t = tk.get_token();
 			if (t.s == ",")
 			{
-				t = tk.get_token();
 				continue;
 			}
+			tk.put_back(t);
 
 			s_type* at = parse_type(tk);
 			t = tk.get_token();

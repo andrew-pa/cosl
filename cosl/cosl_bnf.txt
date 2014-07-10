@@ -1,4 +1,4 @@
-
+/*
 ; [stuff] or [stuff*] zero or one | [$x - $y] range of 
 ; ? zero or more 
 ; + one or more
@@ -25,7 +25,7 @@
 <texture1D_def> := 'texture1D' #ID '(' #NUM(int) ')' ; number is the register id
 <texture2D_def> := 'texture2D' #ID '(' #NUM(int) ')' ; number is the register idx
 <texture3D_def> := 'texture3D' #ID '(' #NUM(int) ')' ; number is the register idx
-<texture_cube_def> := 'texture_cube' #ID '(' #NUM(int) ')' ; number is the register idx
+<texture_cube_def> := 'textureCube' #ID '(' #NUM(int) ')' ; number is the register idx
 
 <texture_def> := <texture1D_def> | <texture2D_def> | <texture3D_def> | <texture_cube_def>
 
@@ -47,6 +47,8 @@
 			 | <bool_expr> '>=' <bool_expr>
 			 | <bool_expr> '==' <bool_expr>
 			 | <bool_expr> '!=' <bool_expr>
+			 | <bool_expr> '&&' <bool_expr>
+			 | <bool_expr> '||' <bool_expr>
 
 <term> := <primary>
 		| <term> '*' <primary> 
@@ -65,11 +67,11 @@
 			   | <id> '*=' <expr>
 			   | <id> '/=' <expr>
 
-<decl_stmt> := <typename> #ID | <typname> #ID '=' <expr>
+<decl_stmt> := <typename> #ID | <typename> #ID '=' <expr> | <typename 'bool'> #ID '=' <bool_expr>
 <if_stmt> := 'if' '(' <bool_expr> ')' <stmt> ['else' <stmt>]
 <while_stmt> := 'while' '(' <bool_expr> ')' <stmt>
 <for_stmt> := 'for' '(' <stmt> ';' <bool_expr> ';' <stmt> ')' <stmt>
-<func_invoke_stmt> := #ID '(' (<expr> ',')+ ')'
+<func_invoke_stmt> := #ID '(' (<expr> ',')+ ')'		
 <return_stmt> := 'return' | 'return' <expr>
 
 <stmt> := <assign_stmt> | <decl_stmt> | <if_stmt> | <while_stmt> | <for_stmt> | <func_invoke_stmt>
@@ -79,3 +81,4 @@
 <function> := <typename $return_type> #ID '(' (<typename> #ID)+ ')' '{' <stmt> '}'
 
 <file> := <shader_type> <input_block> <output_block> (<cbuffer_block>+ <texture_def>+ <function>+)<{any order}
+*/

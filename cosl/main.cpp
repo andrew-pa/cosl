@@ -27,36 +27,71 @@ struct stream_bad_or_fail_exception : public exception
 {
 };
 
-string read_file_and_preprocess(const string& infpath)
+string read_file_and_preprocess(const string& infpath, bool from_include = false)
 {
 	ifstream infs(infpath);
 	if (infs.bad() || infs.fail())
 		throw stream_bad_or_fail_exception();
 	string in_file;
 	string s;
+	int line_idx = 0;
+
+	string line_ending = from_include ? "" : "\n";
+
 	while (!infs.eof())
 	{
 		getline(infs, s);
+		if (s.empty()) continue;
 		auto conts_cmmnt_slsh = s.find('/');
 		if(conts_cmmnt_slsh != s.npos)
 		{
-			if (conts_cmmnt_slsh + 1 < s.size()) throw exception("this is irrlogical"); //what is this case? => "/" not valid!
+			if (conts_cmmnt_slsh + 1 > s.size()) 
+				throw compile_exception("wierd line containing only /", infpath, line_idx); //what is this case? => "/" not valid!
 			if (s[conts_cmmnt_slsh+1] == '/')
 			{
+				//makes sure that it's really a comment (//) and not something else like "/ _stuff_goes_here_that's_valid_ /"
 				s = string(s.begin(), s.begin()+conts_cmmnt_slsh);
-				if (s.size() == 0) continue;
+				if (s.size() == 0)
+				{
+					in_file += line_ending; //add a new line to keep line count same
+					line_idx++;
+					continue;
+				}
 			}
 			else if(s[conts_cmmnt_slsh+1] == '*')
 			{
-			}
-		}
-		if(s[0] == '/' && s[1] == '*')
-		{
-			while(true)
-			{
-				getline(infs, s);
-				auto x = s.find('/');
-				if (x != s.npos && (x + 1 > s.size() || s[x + 1] != '*')) break;
+				in_file += line_ending;
+				line_idx++;
+				if(conts_cmmnt_slsh > 0)
+				{
+					auto x = s.find_last_of('*');
+					if (x != s.npos && (x + 1 < s.size() && s[x + 1] == '/'))
+					{
+						s.erase(s.begin() + conts_cmmnt_slsh, s.begin() + (x + 2));
+						in_file += s + line_ending;
+						line_idx++;
+						continue;
+					}
+				}
+				while(true)
+				{
+					getline(infs, s);
+					in_file += line_ending; //add new line for line count
+					line_idx++;
+					auto x = s.find('*');
+					if (x != s.npos && (x + 1 < s.size() && s[x + 1] == '/')) 
+					{
+						s = string(s.begin()+x+2, s.end());
+						if(s.size() > 0)
+						{
+							in_file += s + line_ending;
+							line_idx++;
+							break;
+						}
+						break;
+					}
+				}
+				continue;
 			}
 		}
 		if (s[0] == '#')
@@ -66,6 +101,8 @@ string read_file_and_preprocess(const string& infpath)
 			iss >> cmd;
 			if (cmd == "#ifdef")
 			{
+				in_file += line_ending;
+				line_idx++;
 				string d;
 				iss >> d;
 				if (defines.find(d) == defines.end())
@@ -73,6 +110,8 @@ string read_file_and_preprocess(const string& infpath)
 					while (!infs.eof() && s != "#endif")
 					{
 						getline(infs, s);
+						in_file += line_ending;
+						line_idx++;
 					}
 					continue;
 				}
@@ -82,6 +121,8 @@ string read_file_and_preprocess(const string& infpath)
 				string d;
 				iss >> d;
 				defines.insert(d);
+				line_idx++;
+				in_file += line_ending;
 				continue;
 			}
 			if (cmd == "#undef")
@@ -89,10 +130,14 @@ string read_file_and_preprocess(const string& infpath)
 				string d;
 				iss >> d;
 				defines.erase(d);
+				line_idx++;
+				in_file += line_ending;
 				continue;
 			}
 			if (cmd == "#endif") 
 			{
+				line_idx++;
+				in_file += line_ending;
 				continue;
 			}
 
@@ -108,7 +153,7 @@ string read_file_and_preprocess(const string& infpath)
 					{
 						try
 						{
-							incl_txt = read_file_and_preprocess(inp + "\\" + f);
+							incl_txt = read_file_and_preprocess(inp + "\\" + f, true);
 							break;
 						}
 						catch(const stream_bad_or_fail_exception& ex)
@@ -116,12 +161,14 @@ string read_file_and_preprocess(const string& infpath)
 							continue;
 						}
 					}
-					in_file += incl_txt + "\n";
+					in_file += incl_txt + line_ending;
 				}
+				line_idx++;
 				continue;
 			}
 		}
-		in_file += s + "\n";
+		in_file += s + line_ending;
+		line_idx++;
 	}
 	/*cout << infpath << " :::: " << endl;
 	cout << in_file;
@@ -206,14 +253,15 @@ int main(int argc, char* argv[])
 			return system(oss.str().c_str()); //super bad hack
 		}
 	}
+#ifndef _DEBUG
 	catch(const exception& ex)
 	{
 		cout << "error: " << ex.what() << endl;
-#ifdef _DEBUG
-		throw ex;
-#endif
 		return -1;
 	}
+#else
+	catch(int z){}
+#endif
 	return 0;
 }
 
