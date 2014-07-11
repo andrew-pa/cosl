@@ -278,8 +278,8 @@ struct false_bexpr : public bool_expr {
 
 struct not_bexpr : public bool_expr
 {
-	bool_expr* xpr;
-	not_bexpr(bool_expr* x)
+	expr* xpr;
+	not_bexpr(expr* x)
 		: xpr(x){}
 	void emit(code_emitter* ce) override;
 };

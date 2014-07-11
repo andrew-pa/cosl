@@ -370,10 +370,10 @@ public:
 				if (!first)
 				{
 					_out << ",";
-					first = false;
 				}
 				ag.typ->emit(this);
 				_out << " " << ag.nmn;
+				first = false;
 			}
 			_out << ")";
 			_out << "{" << endl;

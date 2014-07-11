@@ -133,7 +133,7 @@ cbuffer(0)
 cbuffer(1)
 {
 	float[7] junk;
-	bool something_else;
+	bool[2,2] something_else;
 }
 
 texture1D some_1D_texture(0);
@@ -143,7 +143,7 @@ textureCube some_cubemap(3);
 
 int func0()
 {
-	if(2 + 4)
+	if(2 + 4 == 6)
 	{
 		return 6;
 	}
@@ -156,12 +156,12 @@ float func1(int w3, float z, vec4 f, bool r)
 	return z*w3+f.x+f.y*f.z + f.w;
 }
 
-/*void main()
+void main()
 {
 	//decl stmt
 	float z;
 	int w = 8+1;
-	vec4 f = vec4(1.-2, 2.*5, 3./6, 4.); //also tests func_invoke_primary
+	vec4 f = vec4(1.-2, 2.*5, 3./6, 4.);
 
 	//assign stmt
 	z = 6;
@@ -206,11 +206,13 @@ float func1(int w3, float z, vec4 f, bool r)
 		f.x--;
 	else if(bf.x > 4 || (f.y < 4))
 		f.y++;
+
+
 	else if(cf.z == 2 && !b2)
 		f.z = f.y+2.3;
 
 	bool r = f.x + 3. == w-1.;
-	while(!r)
+	while(!r && something_else[z, w-2])
 	{
 		while((5 == w) || (w != mix(z, w, f.w)))
 		{
@@ -218,9 +220,9 @@ float func1(int w3, float z, vec4 f, bool r)
 		}
 	}
 
-	for(int i = 0; i < 9; ++i)
+	for(int i = 0; i < 7; ++i)
 	{
-		f = vec4(i+1, i+2, i+3, i+4);
+		f = vec4(i+junk[0], i+2*junk[1], i+3*junk[2], i+4*junk[3]) * junk[2*i+1];
 	}
 
 	for(float j = 0.; j != sin(j) && w != z; j += mod(j, w))
@@ -230,4 +232,4 @@ float func1(int w3, float z, vec4 f, bool r)
 
 	output.color = f;
 	output.dpth = z;
-}*/
+}

@@ -36,9 +36,6 @@
 		   | #ID '(' (<expr> ',')+ ')' ;function invocation
 		   | <primary>'['(<expr> ',')+']'
 
-
-<bool_primary> := <id> | #NUM | '(' <bool_expr> ')' 
-		   | #ID '(' (<expr> ',')+ ')' ;function invocation
 <bool_expr> := 'true' | 'false'
 			 | '!' <bool_expr>
 			 | <bool_expr> '<' <bool_expr>

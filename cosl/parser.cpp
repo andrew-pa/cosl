@@ -277,6 +277,14 @@ term* parse_term(tokenizer& tk)
 
 expr* parse_bool_expr(tokenizer& tk)
 {
+	auto w = parse_expr(tk);
+	if (dynamic_cast<bool_expr*>(w) == nullptr)
+	{
+		return new bool_expr_xvr(w);
+	}
+	return w;
+
+
 	auto t = tk.get_token();
 	if (t.tp == token_type::id)
 	{
@@ -358,6 +366,10 @@ expr* parse_expr(tokenizer& tk)
 	{
 		if (t.s == "true") return new true_bexpr();
 		else if (t.s == "false") return new false_bexpr();
+	}	
+	if (t.tp == token_type::special && t.s == "!")
+	{
+		return new not_bexpr(parse_expr(tk));
 	}
 	tk.put_back(t);
 	expr* x = parse_term(tk);
@@ -369,26 +381,69 @@ expr* parse_expr(tokenizer& tk)
 		{
 			t = tk.get_token(); continue;
 		}
-		auto v = matchv<string, int>(t.s,
+
+
+		if(t.s == "+")
 		{
-			{ "+", [&]
-			{
-				term* tt = parse_term(tk);
-				t = tk.get_token();
-				x = new add_expr(x, tt);
-				return 0;
-			}
-			},
-			{ "-", [&]
-			{
-				term* tt = parse_term(tk);
-				t = tk.get_token();
-				x = new sub_expr(x, tt);
-				return 0;
-			}
-			},
-		}, -1);
-		if (v == -1)
+			term* tt = parse_term(tk);
+			t = tk.get_token();
+			x = new add_expr(x, tt);
+		}
+		else if(t.s == "-")
+		{
+			term* tt = parse_term(tk);
+			t = tk.get_token();
+			x = new sub_expr(x, tt);
+		}
+		else if(t.s == "<")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::less, x2);
+		}
+		else if (t.s == ">")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::greater, x2);
+		}
+		else if (t.s == "<=")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::less_equal, x2);
+		}
+		else if (t.s == ">=")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::greater_equal, x2);
+		}
+		else if (t.s == "==")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::equal, x2);
+		}
+		else if (t.s == "!=")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::not_equal, x2);
+		}
+		else if (t.s == "&&")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::and, x2);
+		}
+		else if (t.s == "||")
+		{
+			expr* x2 = parse_expr(tk);
+			t = tk.get_token();
+			x = new binary_bexpr(x, bool_op::or, x2);
+		}
+		else
 		{
 			tk.put_back(t);
 			return x;
@@ -703,7 +758,12 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 			return s;
 		}
 		if (t.tp == token_type::end) return s;
-		if (t.tp == token_type::id)
+		if (t.tp == token_type::special && (t.s == "++" || t.s == "--"))
+		{
+			tk.put_back(t);
+			s = parse_assign_stmt(tk);
+		}
+		else if (t.tp == token_type::id)
 		{
 			if (t.s == "if")
 			{
@@ -789,7 +849,6 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 				}
 				else
 				{
-
 					//assign stmt
 					tk.put_back(t);
 					s = parse_assign_stmt(tk);
@@ -798,13 +857,6 @@ stmt* parse_stmt(tokenizer& tk, bool allow_multi)
 		}
 		if (t.tp == token_type::special)
 		{
-			//if (t.s == "++" || t.s == "--")
-			//{
-			//	//assign stmt
-			//	tk.put_back(t);
-			//	s = parse_assign_stmt(tk);
-			//}
-			//else 
 			if (t.s == ";" && allow_multi)
 			{
 				s = new multi_stmt(s, parse_stmt(tk));

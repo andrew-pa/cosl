@@ -187,8 +187,13 @@ public:
 	{
 		if (x->f == nullptr && x->s == nullptr) return;
 		if (x->f != nullptr)
-		{ x->f->emit(this);  }
-		_out << ";" << endl;
+		{ 
+			x->f->emit(this); 
+
+			if(!(is_a<if_stmt, stmt>(x->f) || is_a<while_stmt, stmt>(x->f) || is_a<for_stmt, stmt>(x->f)))
+				_out << ";" << endl; 
+		}
+		
 		if (x->s != nullptr)
 		{
 			x->s->emit(this);
@@ -273,11 +278,14 @@ public:
 		x->xpr->emit(this);
 		_out << ")";
 		x->body->emit(this);
+		if (dynamic_cast<block_stmt*>(x->body) == nullptr) _out << ";";
 		if (x->else_body != nullptr)
 		{
 			_out << endl << "else ";
 			x->else_body->emit(this);
+			if (dynamic_cast<block_stmt*>(x->else_body) == nullptr) _out << ";" << endl;
 		}
+		else _out << endl;
 	}
 
 	void emit(while_stmt* x)override
