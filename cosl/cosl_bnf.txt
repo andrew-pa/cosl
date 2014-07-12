@@ -4,6 +4,10 @@
 ; + one or more
 ; (...) grouping
 
+;preprocess
+
+;---------- 
+
 <shader_type> := '$vertex_shader' | '$pixel_shader'
 
 <typename> := 'bool' | 'int' | 'uint' | 'float' | 'double'
@@ -78,4 +82,4 @@
 <function> := <typename $return_type> #ID '(' (<typename> #ID)+ ')' '{' <stmt> '}'
 
 <file> := <shader_type> <input_block> <output_block> (<cbuffer_block>+ <texture_def>+ <function>+)<{any order}
-*/
+*/-

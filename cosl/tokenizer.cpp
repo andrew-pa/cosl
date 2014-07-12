@@ -28,8 +28,9 @@ bool is_numeric_body(char c)
 
 
 
-token tokenizer::next_token()
+token tokenizer::next_token(const string& s, uint& idx)
 {
+	int current_line = 0;
 	if (idx == s.size()) return end_token();
 	for (; idx < s.size(); ++idx)
 	{
@@ -97,4 +98,17 @@ token tokenizer::next_token()
 		}
 	}
 	return end_token(current_line);
+}
+
+void tokenizer::tokenize_line(const string& s, const string& file, uint line_num)
+{
+	uint idx = 0;
+	while(idx < s.size())
+	{
+		auto t = next_token(s, idx);
+		if (t.tp == token_type::end) continue;
+		t.source_line = line_num;
+		t.source_file = file;
+		tokens.insert(tokens.begin(), t);
+	}
 }

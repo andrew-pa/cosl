@@ -43,6 +43,9 @@
     <ClInclude Include="glsl_code_emitter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="preprocesser.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="tokenizer.cpp">
@@ -63,5 +66,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="test_0.shdr" />
+    <None Include="test_1.shdr" />
   </ItemGroup>
 </Project>

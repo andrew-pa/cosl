@@ -626,7 +626,7 @@ stmt* parse_assign_stmt(tokenizer& tk, id_primary* already_parsed_id)
 	}
 	else
 	{
-		throw parser_exception(t, "invalid assignment operator");
+ 		throw parser_exception(t, "invalid assignment operator");
 	}
 	//return matchv<string, stmt*>(t.s,
 	//{

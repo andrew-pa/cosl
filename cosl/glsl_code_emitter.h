@@ -280,15 +280,16 @@ public:
 		{
 			if (!first) 
 			{
-				_out << ","; first = false; 
+				_out << ","; 
 			}
 			ag.typ->emit(this);
 			_out << " " << ag.nmn;
+			first = false; 
 		}
 		_out << ")";
 		_out << "{" << endl;
 		x->body->emit(this);
-		_out << "}";
+		_out << "}" << endl;
 	}
 
 	void emit(s_type* x)override

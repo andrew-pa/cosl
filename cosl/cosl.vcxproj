@@ -75,6 +75,7 @@
     <ClInclude Include="glsl_code_emitter.h" />
     <ClInclude Include="hlsl_code_emitter.h" />
     <ClInclude Include="parser.h" />
+    <ClInclude Include="preprocesser.h" />
     <ClInclude Include="tokenizer.h" />
   </ItemGroup>
   <ItemGroup>
@@ -86,6 +87,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="test_0.shdr" />
+    <None Include="test_1.shdr" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,0 +1,9 @@
+
+float func2(float x, float y)
+{
+	float multi = 1.;
+#ifdef MULTIPLY_BY_3
+	multi = 3.;
+#endif
+	return mod(sin(x), cos(y)) * multi;
+}

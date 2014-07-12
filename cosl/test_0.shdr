@@ -3,11 +3,11 @@
 	Attempts to contain all constructs listed in cosl_bnf.txt, and also exercise every piece of code
 	This multiline comment is part of this
 */
-#ifdef XZZ
-#endif
-#include "cosl_bnf.txt"
-
 $pixel_shader
+
+//#define MULTIPLY_BY_3
+//#define THIS_TOGGLE_IS_USELESS
+#include "test_1.shdr"
 
 struct struct_test
 {
@@ -124,9 +124,14 @@ output
 	float dpth : depth0;
 }
 
+//#define MOR_STUF
 cbuffer(0)
 {
+#ifdef MOR_STUF
 	mat4 stuf;
+#else
+	bool no_mor_stuf;
+#endif
 	struct_test stufs;
 }
 
@@ -143,11 +148,17 @@ textureCube some_cubemap(3);
 
 int func0()
 {
+#ifdef THIS_TOGGLE_IS_USELESS
 	if(2 + 4 == 6)
 	{
 		return 6;
 	}
+#elif MULTIPLY_BY_3
+	if(2.999999 == 3)
+		return 6.2;
+#else
 	return 89;
+#endif
 }
 
 float func1(int w3, float z, vec4 f, bool r)

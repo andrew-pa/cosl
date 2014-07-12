@@ -356,7 +356,7 @@ public:
 			_out << "__shader_output_t output;" << endl;
 			x->body->emit(this);
 			_out << "return output;" << endl;
-			_out << "}";
+			_out << "}" << endl;
 		}
 		else
 		{
@@ -378,7 +378,7 @@ public:
 			_out << ")";
 			_out << "{" << endl;
 			x->body->emit(this);
-			_out << "}";
+			_out << "}" << endl;
 		}
 	}
 };

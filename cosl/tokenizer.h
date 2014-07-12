@@ -12,6 +12,7 @@ struct token
 	token_type tp;
 	string s;
 	int source_line;
+	string source_file;
 	token(){}
 	token(token_type tp_, const string& s_, int l = -1)
 		: tp(tp_), s(s_), source_line(l) {}
@@ -69,17 +70,17 @@ struct end_token : public token
 
 class tokenizer
 {
-	string s;
-	unsigned int idx;
-	token buf;
-	bool full;
+	//string s;
+	//unsigned int idx;
+	//token buf;
+	//bool full;
 
-	token next_token();
+	token next_token(const string& s, uint& idx);
 
-	int current_line;
+	vector<token> tokens;
 public:
-	tokenizer(const string& s_)
-		: s(s_), full(false), idx(0), current_line(1)
+	tokenizer()
+		: tokens()
 	{ }
 
 #ifdef DEBUG_AT_LINE
@@ -102,19 +103,17 @@ public:
 #else
 	inline token get_token()
 	{
-		if (full)
-		{
-			full = false;
-			return buf;
-		}
-		auto t = next_token();
+		if (tokens.size() == 0) return end_token();
+		auto t = tokens.back();
+		tokens.pop_back();
 		return t;
 	}
 #endif
 
+	void tokenize_line(const string& s, const string& file, uint line_num);
+
 	inline void put_back(const token& t)
 	{
-		buf = t;
-		full = true;
+		tokens.push_back(t);
 	}
 };
