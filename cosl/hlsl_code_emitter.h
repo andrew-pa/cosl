@@ -113,11 +113,11 @@ class hlsl_code_emitter : public c_style_code_emitter
 			_out << ctor_func_name << "(";
 			if(args.size() == 1) //replicate scalar value because HLSL is stupid
 			{
-				args[0]->emit(this);
-				_out << ", ";
-				args[0]->emit(this);
-				_out << ", ";
-				args[0]->emit(this);
+				for (int i = 0; i < get<1>(vt); ++i)
+				{
+					if (i != 0) _out << ", ";
+					args[0]->emit(this);
+				}
 			}
 			else
 			{

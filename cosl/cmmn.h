@@ -34,9 +34,9 @@ struct compile_exception : public exception
 
 	inline const char* what() const override
 	{
-		ostringstream msgo;
-		msgo << file << "(" << line << "):" << exception::what();
-		return msgo.str().c_str();
+		char* wh = new char[file.size() + 32 + 256];
+		sprintf(wh, "%s(%i): error 0: %s", file.c_str(), line, exception::what());
+		return wh;
 	}
 };
 
