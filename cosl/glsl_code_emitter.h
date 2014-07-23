@@ -26,9 +26,10 @@ class glsl_code_emitter : public c_style_code_emitter
 			else if (shmode == shader_type::pixel_shader) _out << "ps_";
 			_out << "tex_" << txaliases[txname] << ", ";
 			args[1]->emit(this);
-			//emit multiply that causes the y coord to flip to match DX/HLSL
-			if (ftxidims[txname] == 2) _out << "*vec2(1., -1.)";
-			else if (ftxidims[txname] == 3) _out << "*vec3(1.,-1.,1.)";
+			//emit multiply that causes the y coord to flip to match DX/HLSL - turns out his is unnecessary
+			//if (ftxidims[txname] == 2) _out << "*vec2(1., 1.)";
+			//else if (ftxidims[txname] == 3) _out << "*vec3(1.,1.,1.)";
+			//else if (ftxidims[txname] == 7 /* cubemap sets this to 7 */) _out << "*vec3(1.,1.,1.)";
 			_out << ")";
 			return true;
 		}

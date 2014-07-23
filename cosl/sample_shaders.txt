@@ -51,3 +51,38 @@ void main()
 {
 	output.col = sample_texture(tex, input.texc);
 }
+
+$geometry_shader(4)
+input(point)
+{
+	vec4 pos : rs_position;
+}
+
+output(triangle)
+{
+	vec4 pos : rs_position;
+	vec2 texcoord;
+}
+
+void main()
+{
+	vec3 pos = inputs[0].pos.xyz;
+	
+	output.pos = pos;
+	output.texcoord = vec2(0., 0.);
+	emit_vertex();
+
+	output.pos = pos + vec4(1, 0., 0., 0.);
+	output.texcoord = vec2(1., 0.);
+	emit_vertex();
+
+	output.pos = pos - vec4(0., 1., 0., 0.);
+	output.texcoord = vec2(0., 1.);
+	emit_vertex();
+
+	output.pos = pos + vec4(1., 1., 0., 0.);
+	output.texcoord = vec2(1., 1.);
+	emit_vertex();
+
+	end_primitive();
+}

@@ -4,23 +4,23 @@
 ; + one or more
 ; (...) grouping
 
-;preprocess
 
-;---------- 
-
-<shader_type> := '$vertex_shader' | '$pixel_shader'
+<shader_type> := '$vertex_shader' | '$pixel_shader' | '$geometry_shader' '(' #NUM[max_vertices] ')'
 
 <typename> := 'bool' | 'int' | 'uint' | 'float' | 'double'
 			| 'bvec'[2-4] | 'ivec'[2-4] | 'uvec'[2-4] | 'vec'[2-4] | 'dvec'[2-4]
 			| 'mat'[2-4]'x'[[2-4]*] | 'dmat'[2-4]['x'[2-4]*]
 			| #ID ;struct name
 			| <typename>'['(#NUM ',')+']' ;array
+
 <semantic> := 'rs_position' | 'target'#NUM(int)	| depth#NUM(int)
+
+<prim_type> := 'point' | 'line' | 'triangle' | 'line_adj' | 'triangle_adj'
 
 <decl_block> := '{' (<typename> #ID [':' <semantic>] ;)+ '}'
 
-<input_block> := 'input' <decl_block>
-<output_block> := 'output' <decl_block>
+<input_block> := 'input' <decl_block> | 'input' '(' <prim_type> ')' <decl_block>
+<output_block> := 'output' <decl_block> | 'output' '(' <prim_type> ')' <decl_block>
 
 <struct_def> := struct #ID <decl_block>
 

@@ -903,12 +903,48 @@ decl_block* parse_decl_block(tokenizer& tk)
 	return new decl_block(dcl);
 }
 
+prim_type parse_prim_type(tokenizer& tk)
+{
+	auto t = tk.get_token();
+	if (t.tp != token_type::id) throw compile_exception("invalid primitive type: " + t.s, t.source_file, t.source_line);
+	if (t.s == "point")
+		return prim_type::point;
+	else if (t.s == "line")
+		return prim_type::line;
+	else if (t.s == "triangle")
+		return prim_type::triangle;
+	else if (t.s == "line_adj")
+		return prim_type::line_adj;
+	else if (t.s == "triangle_adj")
+		return prim_type::triangle_adj;
+	else
+		throw compile_exception("invalid primitive type: " + t.s, t.source_file, t.source_line);
+}
+
 input_block* parse_input_block(tokenizer& tk)
 {
+	auto t = tk.get_token();
+	if(t.tp == token_type::special && t.s == "(") //geometry shader 
+	{
+		t = tk.get_token();
+		if (t.tp == token_type::special && t.s == ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
+		prim_type tp = parse_prim_type(tk);
+		return new input_block(parse_decl_block(tk), tp);
+	}
+	tk.put_back(t);
 	return new input_block(parse_decl_block(tk));
 }
 output_block* parse_output_block(tokenizer& tk)
 {
+	auto t = tk.get_token();
+	if (t.tp == token_type::special && t.s == "(") //geometry shader 
+	{
+		t = tk.get_token();
+		if (t.tp == token_type::special && t.s == ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
+		prim_type tp = parse_prim_type(tk);
+		return new output_block(parse_decl_block(tk), tp);
+	}
+	tk.put_back(t); 
 	return new output_block(parse_decl_block(tk));
 }
 cbuffer_block* parse_cbuffer_block(tokenizer& tk)
@@ -1009,6 +1045,17 @@ shader_file* parse_shader(tokenizer& tk)
 	if (t.tp != token_type::id) throw compile_exception("shader type decl missing", t.source_file, t.source_line);
 	if (t.s == "$vertex_shader") sf->type = shader_type::vertex_shader;
 	else if (t.s == "$pixel_shader") sf->type = shader_type::pixel_shader;
+	else if (t.s == "$geometry_shader")
+	{
+		sf->type = shader_type::geometry_shader;
+		t = tk.get_token();
+		if (t.tp != token_type::special || t.s != "(") throw compile_exception("geometry shader type decl missing opening (", t.source_file, t.source_line);
+		t = tk.get_token();
+		if (t.tp != token_type::number_lit) throw compile_exception("geometry shader type decl missing max vertex count", t.source_file, t.source_line);
+		sf->geometry_shader_v.max_vertices = atoi(t.s.c_str());
+		t = tk.get_token();
+		if (t.tp != token_type::special || t.s != ")") throw compile_exception("geometry shader type decl missing closing )", t.source_file, t.source_line);
+	}
 	else throw compile_exception("invalid shader type", t.source_file, t.source_line);
 
 	while (t.tp != token_type::end)

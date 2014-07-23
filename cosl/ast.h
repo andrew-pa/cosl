@@ -12,7 +12,7 @@ public:
 
 enum class shader_type
 {
-	vertex_shader, pixel_shader,
+	vertex_shader, pixel_shader, geometry_shader
 };
 
 enum class base_s_type
@@ -74,24 +74,39 @@ struct decl_block : public ast_node
 
 };
 
+enum class prim_type
+{
+	none,
+	point, line, triangle, line_adj, triangle_adj
+};
+
 struct input_block : public ast_node
 {
 	decl_block* db;
-	input_block(vector<decl>& d)
-		: db(new decl_block(d))	{}
-	input_block(decl_block* d)
-		: db(d)	{}
+	prim_type in_prim_type;
+
+	input_block(vector<decl>& d, prim_type pt = prim_type::none)
+		: db(new decl_block(d)), in_prim_type(pt)	{}
+	input_block(decl_block* d, prim_type pt = prim_type::none)
+		: db(d), in_prim_type(pt)	{}
+
 	void emit(code_emitter* ce) override;
-};//typedef decl_block input_block; 
+};
+
 struct output_block  : public ast_node
 {
 	decl_block* db;
-	output_block(vector<decl>& d)
-		: db(new decl_block(d))	{}
-	output_block(decl_block* d)
-		: db(d)	{}
+	prim_type out_prim_type;
+
+	output_block(vector<decl>& d, prim_type pt = prim_type::none)
+		: db(new decl_block(d)), out_prim_type(pt)	{}
+	output_block(decl_block* d, prim_type pt = prim_type::none)
+		: db(d), out_prim_type(pt)	{}
+
+
+
 	void emit(code_emitter* ce) override;
-};//typedef decl_block output_block; 
+};
 
 struct cbuffer_block : public ast_node
 {
@@ -435,4 +450,9 @@ public:
 	vector<texture_def*> texturedefs;
 	vector<struct_block*> structdefs;
 	vector<sfunction*> functions;
+
+	struct
+	{
+		uint max_vertices;
+	} geometry_shader_v;
 };
