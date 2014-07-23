@@ -111,7 +111,7 @@ int main(int argc, char* argv[])
 			return system(oss.str().c_str()); //super bad hack
 		}
 	}
-#ifdef _DEBUG
+#ifndef _DEBUG
 	catch(const exception& ex)
 	{
 		cout << "error: " << ex.what() << endl;

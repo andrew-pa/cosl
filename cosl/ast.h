@@ -52,6 +52,10 @@ struct semantic
 		: name(n), idx(i)
 	{}
 };
+inline bool operator <(const semantic& d, const semantic& s)
+{
+	return d.name < s.name;
+}
 
 struct decl : public ast_node
 {

@@ -3,7 +3,7 @@
 	Attempts to contain all constructs listed in cosl_bnf.txt, and also exercise every piece of code
 	This multiline comment is part of this
 */
-//$pixel_shader
+$pixel_shader
 
 //#define MULTIPLY_BY_3
 //#define THIS_TOGGLE_IS_USELESS

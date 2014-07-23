@@ -926,9 +926,9 @@ input_block* parse_input_block(tokenizer& tk)
 	auto t = tk.get_token();
 	if(t.tp == token_type::special && t.s == "(") //geometry shader 
 	{
-		t = tk.get_token();
-		if (t.tp == token_type::special && t.s == ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
 		prim_type tp = parse_prim_type(tk);
+		t = tk.get_token();
+		if (t.tp != token_type::special && t.s != ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
 		return new input_block(parse_decl_block(tk), tp);
 	}
 	tk.put_back(t);
@@ -939,9 +939,9 @@ output_block* parse_output_block(tokenizer& tk)
 	auto t = tk.get_token();
 	if (t.tp == token_type::special && t.s == "(") //geometry shader 
 	{
-		t = tk.get_token();
-		if (t.tp == token_type::special && t.s == ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
 		prim_type tp = parse_prim_type(tk);
+		t = tk.get_token();
+		if (t.tp != token_type::special && t.s != ")") throw compile_exception("missing closing )", t.source_file, t.source_line);
 		return new output_block(parse_decl_block(tk), tp);
 	}
 	tk.put_back(t); 

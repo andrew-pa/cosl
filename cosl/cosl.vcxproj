@@ -88,6 +88,7 @@
   <ItemGroup>
     <None Include="test_0.shdr" />
     <None Include="test_1.shdr" />
+    <None Include="test_2.shdr" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

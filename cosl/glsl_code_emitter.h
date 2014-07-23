@@ -9,10 +9,11 @@
 class glsl_code_emitter : public c_style_code_emitter
 {
 	shader_type shmode;
+	shader_file* shfile;
 	string vs_str;
 	map<string, uint> txaliases;
 	map<string, uint> ftxidims;
-	string rspos;
+	map<semantic, string> vars_for_sem;
 
 	bool emit_special_function(const string& name, const vector<expr*>& args) override
 	{
@@ -51,13 +52,46 @@ class glsl_code_emitter : public c_style_code_emitter
 			_out << " { discard; }";
 			return true;
 		}
+		else if(shmode == shader_type::geometry_shader)
+		{ 
+			if(name == "emit_vertex")
+			{
+				_out << "EmitVertex()"; //EmitVertex has no params so emit_vertex just ignores it's params
+				return true;
+			}
+			else if(name == "end_primitive")
+			{
+				_out << "EndPrimitive()"; //EndPrimitive same as EmitVertex
+				return true;
+			}
+		}
 		return false; //function wasn't really special
+	}
+
+	string string_for_prim_type(prim_type pt)
+	{
+		switch (pt)
+		{
+		case prim_type::point:
+			return "points";
+		case prim_type::line:
+			return "lines";
+		case prim_type::triangle:
+			return "triangles";
+		case prim_type::line_adj:
+			return "lines_adjacency";
+		case prim_type::triangle_adj:
+			return "triangles_adjacency";
+		default:
+			throw exception("invalid primitive type");
+		}
 	}
 public:
 	glsl_code_emitter(const string& version_string) : vs_str(version_string) { }
 
 	void emit(shader_file* sh) override
 	{
+		shfile = sh;
 		_out << "#version " << vs_str << " core" << endl;
 		emit(sh->type);
 		sh->inpblk->emit(this);
@@ -79,14 +113,6 @@ public:
 
 	void emit(decl& x) override
 	{
-		if(x.sem != nullptr)
-		{
-			if(x.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
-			{
-				rspos = x.name;
-				return;
-			}
-		}
 		x.type->emit(this);
 		_out << " " << x.name;		
 		if (x.type->array_dims.size() > 0)
@@ -103,22 +129,24 @@ public:
 
 	void emit(input_block* x) override
 	{
+		if(shmode == shader_type::geometry_shader)
+		{
+			_out << "layout(" << string_for_prim_type(x->in_prim_type) << ") in;" << endl;
+		}
+
 		int layout_idx = 0;
 		for(auto& d : x->db->decls)
 		{
+			if (d.sem != nullptr)
+			{
+				vars_for_sem[*d.sem] = d.name;
+				continue;
+			}
+
+			//this is iffy, because i don't know if geometry shaders and vertex shaders are the same for this
 			if (shmode != shader_type::pixel_shader)
 				_out << "layout(location = " << layout_idx << ") ";
-			else
-			{
-				if (d.sem != nullptr)
-				{
-					if (d.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
-					{
-						rspos = d.name;
-						continue;
-					}
-				}
-			}
+			
 			_out << "in ";
 			d.emit(this);
 			_out << ";" << endl;
@@ -128,6 +156,17 @@ public:
 
 	void emit(output_block* x) override
 	{
+		if(shmode == shader_type::geometry_shader)
+		{
+			string pts;
+			if (x->out_prim_type == prim_type::point) pts = "points";
+			else if (x->out_prim_type == prim_type::line) pts = "line_strip";
+			else if (x->out_prim_type == prim_type::triangle) pts = "triangle_strip";
+			else throw exception("invalid output primitive type");
+			_out << "layout(" << pts << 
+				", max_vertices = " << shfile->geometry_shader_v.max_vertices << ") out;" << endl;
+		}
+
 		for (auto& d : x->db->decls)
 		{
 			if(d.sem != nullptr)
@@ -136,9 +175,9 @@ public:
 				{
 					_out << "layout(location = " << d.sem->idx << ") ";
 				}
-				if (d.sem->name == "rs_position" && shmode == shader_type::vertex_shader)
+				else 
 				{
-					rspos = d.name;
+					vars_for_sem[*d.sem] = d.name;
 					continue;
 				}
 			}
@@ -235,7 +274,7 @@ public:
 		{
 			if(vaid->id_s == "output")
 			{
-				if(!x->members.empty() && x->members[0] == rspos)
+				if(!x->members.empty() && x->members[0] == vars_for_sem[semantic("rs_position", 0)])
 				{
 					_out << "gl_Position";
 					return;
@@ -262,6 +301,28 @@ public:
 					i++;
 				}
 				return;
+			}
+		}
+		auto avaid = dynamic_cast<array_index_primary*>(x->val);
+		if(avaid != nullptr)
+		{
+			vaid = dynamic_cast<id_primary*>(avaid->base);
+			if(vaid != nullptr)
+			{
+				if(vaid->id_s == "inputs" && shmode == shader_type::geometry_shader)
+				{
+					_out << "gl_in[";
+					avaid->indices[0]->emit(this); //gl_in only 
+					_out << "]";
+					for (auto& m : x->members)
+					{
+						if (vars_for_sem[semantic("rs_position",0)] == m)
+							_out << ".gl_Position";
+						else
+							_out << "." << m;
+					}
+					return;
+				}
 			}
 		}
 		x->val->emit(this);
