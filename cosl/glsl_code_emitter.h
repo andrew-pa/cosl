@@ -86,13 +86,17 @@ class glsl_code_emitter : public c_style_code_emitter
 			throw exception("invalid primitive type");
 		}
 	}
+	string na;
+	string na_input = "i_";
+	string na_output = "o_";
 public:
-	glsl_code_emitter(const string& version_string) : vs_str(version_string) { }
+	glsl_code_emitter(const string& version_string) : vs_str(version_string), na(string("")) { }
 
 	void emit(shader_file* sh) override
 	{
 		shfile = sh;
 		_out << "#version " << vs_str << " core" << endl;
+		_out << "~~~~" << endl;
 		emit(sh->type);
 		sh->inpblk->emit(this);
 		sh->outblk->emit(this);
@@ -109,12 +113,27 @@ public:
 	void emit(shader_type x) override
 	{
 		shmode = x;
+		switch (x)
+		{
+		case shader_type::vertex_shader:
+			na_input = "vsi_";
+			na_output = "vso_";
+			break;
+		case shader_type::pixel_shader:
+			na_input = "i_";
+			na_output = "pso_";
+			break;
+		case shader_type::geometry_shader:
+			na_input = "vso_";
+			na_output = "gso_";
+			break;
+		}
 	}
 
 	void emit(decl& x) override
 	{
 		x.type->emit(this);
-		_out << " " << x.name;		
+		_out << " " << na+x.name;		
 		if (x.type->array_dims.size() > 0)
 		{
 			for (uint d : x.type->array_dims)
@@ -134,24 +153,97 @@ public:
 			_out << "layout(" << string_for_prim_type(x->in_prim_type) << ") in;" << endl;
 		}
 
+		if (shmode == shader_type::pixel_shader)
+		{
+#pragma region Pixel Shader input blocks
+			_out << "#ifndef IN_FROM_GS" << endl;
+			
+			int layout_idx = 0; //write out input vars for VS->PS path
+			for (auto& d : x->db->decls)
+			{
+				if (d.sem != nullptr)
+				{
+					vars_for_sem[*d.sem] = d.name;
+					if (d.sem->name == "rs_position")
+						continue;
+				}
+
+				_out << "#define i_" << d.name << " " << "vso_" << d.name << endl;
+				_out << "in ";
+				d.type->emit(this);
+				_out << " " << "vso_" + d.name;
+				if (d.type->array_dims.size() > 0)
+				{
+					for (uint d : d.type->array_dims)
+					{
+						_out << "[";
+						_out << d;
+						_out << "]";
+					}
+				}
+				_out << ";" << endl;
+				layout_idx++;
+			}
+
+			_out << "#else" << endl;
+
+			layout_idx = 0; //write out input vars for VS->GS->PS path
+			for (auto& d : x->db->decls)
+			{
+				if (d.sem != nullptr)
+				{
+					vars_for_sem[*d.sem] = d.name;
+					if (d.sem->name == "rs_position")
+						continue;
+				}
+
+				_out << "#define i_" << d.name << " " << "gso_" << d.name << endl;
+				_out << "in ";
+				d.type->emit(this);
+				_out << " " << "gso_" + d.name;
+				if (d.type->array_dims.size() > 0)
+				{
+					for (uint d : d.type->array_dims)
+					{
+						_out << "[";
+						_out << d;
+						_out << "]";
+					}
+				}
+				_out << ";" << endl;
+				layout_idx++;
+			}
+
+			_out << "#endif" << endl;
+			return;
+#pragma endregion
+		}
+
+		na = na_input;
+
 		int layout_idx = 0;
 		for(auto& d : x->db->decls)
 		{
 			if (d.sem != nullptr)
 			{
 				vars_for_sem[*d.sem] = d.name;
-				continue;
+				if(d.sem->name == "rs_position") 
+					continue;
 			}
 
 			//this is iffy, because i don't know if geometry shaders and vertex shaders are the same for this
-			if (shmode != shader_type::pixel_shader)
+			if (shmode == shader_type::vertex_shader)
 				_out << "layout(location = " << layout_idx << ") ";
 			
 			_out << "in ";
 			d.emit(this);
-			_out << ";" << endl;
+			if (shmode == shader_type::geometry_shader) _out << "[]";
+			_out << ";" << endl; 
 			layout_idx++;
 		}
+
+
+		na = "";
 	}
 
 	void emit(output_block* x) override
@@ -166,6 +258,8 @@ public:
 			_out << "layout(" << pts << 
 				", max_vertices = " << shfile->geometry_shader_v.max_vertices << ") out;" << endl;
 		}
+		
+		na = na_output;
 
 		for (auto& d : x->db->decls)
 		{
@@ -175,7 +269,7 @@ public:
 				{
 					_out << "layout(location = " << d.sem->idx << ") ";
 				}
-				else 
+				else if(d.sem->name == "rs_position")
 				{
 					vars_for_sem[*d.sem] = d.name;
 					continue;
@@ -185,6 +279,8 @@ public:
 			d.emit(this);
 			_out << ";" << endl;
 		}
+
+		na = "";
 	}
 
 	void emit(cbuffer_block* x) override
@@ -279,7 +375,8 @@ public:
 					_out << "gl_Position";
 					return;
 				}
-				
+			
+				_out << na_output;
 				int i = 0;
 				for (auto& n : x->members)
 				{
@@ -292,6 +389,7 @@ public:
 			}
 			if (vaid->id_s == "input")
 			{
+				_out << na_input;
 				int i = 0;
 				for (auto& n : x->members)
 				{
@@ -311,15 +409,37 @@ public:
 			{
 				if(vaid->id_s == "inputs" && shmode == shader_type::geometry_shader)
 				{
-					_out << "gl_in[";
-					avaid->indices[0]->emit(this); //gl_in only 
-					_out << "]";
-					for (auto& m : x->members)
+					if (x->members[0] == vars_for_sem[semantic("rs_position", 0)])
 					{
-						if (vars_for_sem[semantic("rs_position",0)] == m)
-							_out << ".gl_Position";
-						else
-							_out << "." << m;
+						_out << "gl_in[";
+						avaid->indices[0]->emit(this); //gl_in only 
+						_out << "]";
+						for (auto& m : x->members)
+						{
+							if (vars_for_sem[semantic("rs_position",0)] == m)
+								_out << ".gl_Position";
+							else
+								_out << "." << m;
+						}
+					}
+					else
+					{
+						_out << na_input;
+						int i = 0;
+						for (auto& n : x->members)
+						{
+							_out << n;
+							if(i == 0)
+							{
+
+								_out << "[";
+								avaid->indices[0]->emit(this);
+								_out << "]";
+							}
+							if (i != x->members.size() - 1)
+								_out << ".";
+							i++;
+						}
 					}
 					return;
 				}

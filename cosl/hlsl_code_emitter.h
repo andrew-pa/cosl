@@ -9,6 +9,7 @@
 class hlsl_code_emitter : public c_style_code_emitter
 {
 	shader_type mode;
+	shader_file* shfile;
 
 	string translate_semantic(semantic* s)
 	{
@@ -167,6 +168,16 @@ class hlsl_code_emitter : public c_style_code_emitter
 			_out << "clip(-1.f)";
 			return true;
 		}
+		else if(name == "emit_vertex")
+		{
+			_out << "__output_stream.Append(output)";
+			return true;
+		}
+		else if(name == "end_primitive")
+		{
+			_out << "__output_stream.RestartStrip()";
+			return true;
+		}
 		return false;
 	}
 public:
@@ -176,6 +187,7 @@ public:
 
 	void emit(shader_file* sh)override
 	{
+		shfile = sh;
 		_out << "#pragma pack_matrix( row_major )" << endl;
 		emit(sh->type);
 		sh->inpblk->emit(this);
@@ -332,31 +344,98 @@ public:
 			_out << "." << m;
 	}
 
+	string string_for_prim_type(prim_type p)
+	{
+		switch (p)
+		{
+		case prim_type::point:
+			return "point";
+		case prim_type::line:
+			return "line";
+		case prim_type::triangle:
+			return "triangle";
+		case prim_type::line_adj:
+			return "lineadj";
+		case prim_type::triangle_adj:
+			return "triangleadj";
+		default:
+			throw exception("invalid primitive type");
+		}
+	}
+
+	uint vertex_count_for_prim_type(prim_type p)
+	{
+		switch (p)
+		{
+		case prim_type::point:
+			return 1;
+		case prim_type::line:
+			return 2;
+		case prim_type::triangle:
+			return 3;
+		case prim_type::line_adj:
+			return 4;
+		case prim_type::triangle_adj:
+			return 6;
+		default:
+			throw exception("invalid primitive type");
+		}
+	}
+
+	string stream_type_for_prim_type(prim_type p)
+	{
+		switch (p)
+		{
+		case prim_type::point:
+			return "PointStream";
+		case prim_type::line:
+			return "LineStream";
+		case prim_type::triangle:
+			return "TriangleStream";
+		default:
+			throw exception("invalid primitive type");
+		}
+	}
+
 	void emit(sfunction* x)override
 	{
 		if (x->name == "main")
 		{
-			_out << "__shader_output_t"; //x->return_type->emit(this);
-			_out << " ";
-			_out << x->name;
-			_out << "(__shader_input_t input";
-			bool first = true;
-			for (auto& ag : x->args)
+			if(mode == shader_type::geometry_shader)
 			{
-				if(!first)
-				{
-					_out << ",";
-					first = false;
-				}
-				ag.typ->emit(this);
-				_out << " " << ag.nmn;
+				_out << "[maxvertexcount(" << shfile->geometry_shader_v.max_vertices << ")]" << endl;
+				_out << "void main(" <<
+					string_for_prim_type(shfile->inpblk->in_prim_type) << " __shader_input_t inputs[" << vertex_count_for_prim_type(shfile->inpblk->in_prim_type) << "], "
+					<< "inout " << stream_type_for_prim_type(shfile->outblk->out_prim_type) << "<__shader_output_t> __output_stream)";
+				_out << "{" << endl;
+				_out << "__shader_output_t output = (__shader_output_t)0;" << endl;
+				x->body->emit(this);
+				_out << "}" << endl;
 			}
-			_out << ")";
-			_out << "{" << endl;
-			_out << "__shader_output_t output;" << endl;
-			x->body->emit(this);
-			_out << "return output;" << endl;
-			_out << "}" << endl;
+			else
+			{
+				_out << "__shader_output_t"; //x->return_type->emit(this);
+				_out << " ";
+				_out << x->name;
+				_out << "(__shader_input_t input";
+				bool first = true;
+				for (auto& ag : x->args)
+				{
+					if(!first)
+					{
+						_out << ",";
+						first = false;
+					}
+					ag.typ->emit(this);
+					_out << " " << ag.nmn;
+				}
+				_out << ")";
+				_out << "{" << endl;
+				_out << "__shader_output_t output;" << endl;
+				x->body->emit(this);
+				_out << "return output;" << endl;
+				_out << "}" << endl;
+			}
 		}
 		else
 		{

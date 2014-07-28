@@ -1,9 +1,18 @@
 #version 400 core
-in vec4 pos;
-in vec3 norm;
-in vec2 tex;
-layout(location = 0) out vec4 color;
-out float dpth;
+~~~~
+#ifndef IN_FROM_GS
+#define i_norm vso_norm
+in vec3 vso_norm;
+#define i_tex vso_tex
+in vec2 vso_tex;
+#else
+#define i_norm gso_norm
+in vec3 gso_norm;
+#define i_tex gso_tex
+in vec2 gso_tex;
+#endif
+layout(location = 0) out vec4 pso_color;
+out float pso_dpth;
 struct struct_test
 {
 };
@@ -156,8 +165,8 @@ f = vec4(i + junk[0], i + 2 * junk[1], i + 3 * junk[2], i + 4 * junk[3]) * junk[
 }
 for(float j = 0.; j != sin(j) && w != z; j += mod(j, w))w = j + z / 2;
 z += func1(w, z, f, r);
-color = f;
-dpth = z;
+pso_color = f;
+pso_dpth = z;
 ;
 ;
 }
